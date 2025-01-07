@@ -1,0 +1,7 @@
+(executable
+ (name main)
+ (libraries eio_main bigarray cstruct layer))
+
+(executable
+ (name main_tiff)
+ (libraries eio_main tiff))
