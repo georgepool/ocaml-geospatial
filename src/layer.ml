@@ -92,14 +92,14 @@ let windows_are_equal window1 window2 =
   (window1.xsize = window2.xsize) &&
   (window1.ysize = window2.ysize) 
 
-let exec_add_layer left_layer right_layer = 
+(* let exec_add_layer left_layer right_layer = 
   match left_layer, right_layer with
   | SingleLayer(left), SingleLayer(right) ->
     if windows_are_equal (left.window) (right.window) then
       blah blah blah
     else 
       raise WindowsAreNotSameSize
-  | _ -> raise NestedLayerGivenNotSingleLayer
+  | _ -> raise NestedLayerGivenNotSingleLayer *)
 
 let eval_single_layer layer index =
   let window = layer.window in 
@@ -108,59 +108,73 @@ let eval_single_layer layer index =
   let data = Array1.sub (layer.data) (index + xoffset) xsize
   data
 
-let add_layer_data lhs rhs = 
+let add_layer_data lhs rhs index result = 
   let len = Array1.dim lhs in 
   if len <> Array1.dim rhs then
    raise InvalidArg "Arrays must have same length"
   let result = Array1.create (Array1.kind lhs) (Array1.layout lhs) len in
   for i = 0 to len - 1 do
-    result.{i} <- lhs.{i} + rhs.{i}
+    result.{(i+index)} <- lhs.{i} + rhs.{i}
   done;
   result
 
 
-let mul_layer_data lhs rhs = 
+let mul_layer_data lhs rhs index result = 
   let len = Array1.dim lhs in 
   if len <> Array1.dim rhs then
     raise InvalidArg "Arrays must have same length"
   let result = Array1.create (Array1.kind lhs) (Array1.layout lhs) len in
   for i = 0 to len - 1 do
-    result.{i} <- lhs.{i} * rhs.{i}
+    result.{(i+index)} <- lhs.{i} * rhs.{i}
   done;
   result
 
-let add_layer_data_scalar lhs x = 
+let add_layer_data_scalar lhs x index result = 
   let result = Array1.create (Array1.kind lhs) (Array1.layout lhs) len in
   for i = 0 to len - 1 do
-    result.{i} <- lhs.{i} + x
+    result.{(i+index)} <- lhs.{i} + x
   done;
   result
 
-let mul_layer_data_scalar lhs x = 
+let mul_layer_data_scalar lhs x index result = 
   let result = Array1.create (Array1.kind lhs) (Array1.layout lhs) len in
   for i = 0 to len - 1 do
-    result.{i} <- lhs.{i} * x
+    result.{(i+index)} <- lhs.{i} * x
   done;
   result
 
-let eval_layer layer_operation index_y = 
+let eval_layer_row layer_operation index_y result_layer =
+  (* check if windows are equal? *) 
+  (* maybe just have to return an array in the end
+  this definitely does not work!!!*)
   match layer_operation with
   | SingleLayer(layer) -> eval_single_layer layer index_y 
   | LayerOperation(l, o) -> 
     let left_data = eval_layer l index_y in 
+    let start_index = index_y + result_layer.window.xoffset in 
     match o with 
     | ADD_LAYER(r) ->
       let right_data = eval_layer r index_y in 
-      add_layer_data left_data right_data
+      add_layer_data left_data right_data start_index (result_layer.data)
     | MUL_LAYER(r) -> 
       let right_data = eval_layer r index_y in 
-      add_layer_data left_data right_data
+      add_layer_data left_data right_data start_index (result_layer.data)
     | ADD_SCALAR(x) -> 
-      add_layer_data_scalar left_data x
+      add_layer_data_scalar left_data x start_index (result_layer.data)
     | MUL_SCALAR(x) ->
-      mul_layer_data_scalar right_data x
+      mul_layer_data_scalar right_data x start_index (result_layer.data)
       (* itemwise addition of left and right*)
-    
+
+let rec eval_layer layer_operation output_layer = 
+  if windows_are_equal (layer_operation.window) (output_layer.window) then
+    let yoffset = ref 0 in
+    let ysize = layer_operation.window.ysize in  
+    while yoffset < ysize do
+      eval_layer_row layer_operation (yoffset * ycount) output_layer.layer;
+      yoffset := !yoffset + 1;
+    done
+  else
+    raise WindowsAreNotSameSize
 let rec save_layer layer_operation output_layer = 
   match layer_operation with 
   | SingleLayer(_) -> layer_operation
