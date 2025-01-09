@@ -6,6 +6,10 @@ end
 
 type layer
 
+type pixel_scale = {
+  xstep: float;
+  ystep: float
+}
 type layer_data = (int, int8_unsigned_elt,  c_layout) Array1.t
 
 type operation = 
@@ -39,15 +43,18 @@ val data : layer_operation -> layer_data
 
 val sum_layer : layer_operation -> int
 
-val area : layer_operation -> area 
+val underlying_area : layer_operation -> area 
+
+val active_area : layer_operation -> area 
 
 val window : layer_operation -> window
 
-val pp_area : area -> unit
 
-val map_layer : layer -> (int -> int) -> layer_operation
+val map_layer : layer_operation -> (int -> int) -> layer_operation
 
 val find_intersection : layer_operation list -> area
+
+val set_window_from_area : layer_operation -> area -> window
 
 val empty_layer_like : layer_operation -> layer_operation
 
@@ -58,3 +65,8 @@ val add : layer_operation -> int -> layer_operation
 val mul_layer : layer_operation -> layer_operation -> layer_operation
 
 val add_layer : layer_operation -> layer_operation -> layer_operation
+
+
+val pp_area : area -> unit
+
+val pp_window : window -> unit
