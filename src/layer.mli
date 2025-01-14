@@ -67,6 +67,13 @@ val mul_layer : layer_operation -> layer_operation -> layer_operation
 val add_layer : layer_operation -> layer_operation -> layer_operation
 
 
+val eval_layer : layer_operation -> layer_operation
+
+val windows_are_equal : window -> window -> bool
+
 val pp_area : area -> unit
 
 val pp_window : window -> unit
+
+
+val set_window : layer_operation -> window -> unit
