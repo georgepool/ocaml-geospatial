@@ -1,7 +1,8 @@
 open Bigarray
+open Tiff
 
 let () = 
-  let layer = Layer.layer_from_file "test/cea.tiff" in
+  let layer = Layer.layer_from_file "test/cea.tiff" Data.UINT8 in
   let width = Layer.width layer in 
   let height = Layer.height layer in 
   let area = Layer.underlying_area layer in

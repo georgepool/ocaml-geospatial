@@ -31,7 +31,7 @@ type window = {
   ysize: int
 }
 
-val layer_from_file : string -> layer_operation
+val layer_from_file : string -> Tiff.Data.data_type -> layer_operation
 
 val exec_layer : layer_operation -> layer_operation
 

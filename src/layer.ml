@@ -56,7 +56,7 @@ type layer = {
   height: int;
   data: layer_data;
   underlying_area: area;
-  mutable active_area: area;
+  (* mutable *) active_area: area;
   mutable window: window;
   pixel_scale: pixel_scale
 }
@@ -293,24 +293,30 @@ let rec pixel_scale layer_operation =
     let tiff = Tiff.from_file (File.pread_exact r) in
     tiff *)
 
-let read_tiff_data ifd ro = 
+(* let read_tiff_data ifd ro = 
   let data_offsets = Tiff.Ifd.data_offsets ifd in
   let data_bytecounts = Tiff.Ifd.data_bytecounts ifd in 
   let rows_per_strip = Tiff.Ifd.rows_per_strip ifd in 
   let width = Tiff.Ifd.width ifd in 
   let data = Tiff.read_data2_uint8 ro data_offsets data_bytecounts rows_per_strip width in
-  data
+  data *)
 
 
-let layer_from_file file_name = 
+let layer_from_file file_name data_type = 
   Eio_main.run @@ fun env ->
     let fs = Stdenv.fs env in
     Path.(with_open_in (fs / file_name)) @@ fun r ->
-      let tiff = Tiff.from_file (File.pread_exact r) in
+      let tiff = Tiff.from_file (File.pread_exact r) data_type in
       let ifd = Tiff.ifd tiff in 
       let width = Tiff.Ifd.width ifd in 
       let height = Tiff.Ifd.width ifd in 
-      let data = read_tiff_data ifd (File.pread_exact r) in
+      let data_wrapper = Tiff.data tiff in
+      let data = 
+        match data_wrapper with 
+        | Tiff.Data.UInt8Data(arr) -> arr 
+        | _ -> raise Tiff.Data.TiffDataHasWrongType
+      in
+      (* let data = read_tiff_data ifd (File.pread_exact r data_type) in *)
       let model_tiepoint = Tiff.Ifd.tiepoint ifd in
       let model_pixel_scale = Tiff.Ifd.pixel_scale ifd in
       let geo_x = model_tiepoint.(3) in 
