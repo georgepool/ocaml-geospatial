@@ -56,7 +56,7 @@ type layer = {
   height: int;
   data: layer_data;
   underlying_area: area;
-  active_area: area;
+  mutable active_area: area;
   mutable window: window;
   pixel_scale: pixel_scale
 }
@@ -436,11 +436,12 @@ let empty_layer_like layer_operation =
   let data = Array1.create int8_unsigned c_layout length in
   let underlying_area = underlying_area layer in
   let active_area = active_area layer in
+  let original_window = window layer in 
   let window = {
-    xoffset=0;
-    yoffset=0;
-    xsize=width;
-    ysize=height;
+    xoffset=original_window.xoffset;
+    yoffset=original_window.yoffset;
+    xsize=original_window.xsize;
+    ysize=original_window.ysize;
   } in 
   let pixel_scale = pixel_scale layer in
   let new_layer = {
@@ -476,6 +477,7 @@ let sum_layer layer_operation = (* needs to consider window! *)
     count := 0;
     for x = xoffset to (xsize-1) do
       let item = Array1.get arr (x + (y * width)) in
+      Eio.traceln "Actual value: %i" item;
       sum := !sum + item;
       (* sum := !sum + Array1.get arr (x + (y * width)); *)
       count := !count + 1;
@@ -505,7 +507,14 @@ let eval_layer layer_operation = (* does not work when the files are not the sam
   done;
   output_layer
 
-let set_window layer_operation new_window = 
+let set_window layer_operation xoffset yoffset xsize ysize =
+  let new_window = 
+    {
+      xoffset = xoffset;
+      yoffset = yoffset;
+      xsize = xsize;
+      ysize = ysize
+    } in
   match layer_operation with
   | SingleLayer(layer) -> 
     layer.window <- new_window;

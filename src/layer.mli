@@ -76,4 +76,4 @@ val pp_area : area -> unit
 val pp_window : window -> unit
 
 
-val set_window : layer_operation -> window -> unit
+val set_window : layer_operation -> int -> int -> int -> int -> unit

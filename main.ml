@@ -7,9 +7,11 @@ let () =
   let area = Layer.underlying_area layer in
   let data = Layer.data layer in 
   Eio.traceln "File size: %ix%i" width height;
+  Layer.set_window layer 0 0 5 5;
   let layer_total = Layer.sum_layer layer in 
   Eio.traceln "Total: %i" layer_total; 
   Eio.traceln "Length of array: %i" (Array1.dim data);
+
 
   Eio.traceln "----------------------------------";
   let empty_layer = Layer.empty_layer_like layer in 
