@@ -3,7 +3,7 @@ open Eio
 let () =
   Eio_main.run @@ fun env ->
   let fs = Stdenv.fs env in
-  Path.(with_open_in (fs / "test/cea.tiff")) @@ fun r ->
+  Path.(with_open_in (fs / "test/elevation-float_uncompressed.tif")) @@ fun r ->
     let tiff = Tiff.from_file (File.pread_exact r) (Tiff.Data.UINT8) in
     let ifd = Tiff.ifd tiff in
     let entries = Tiff.Ifd.entries ifd in

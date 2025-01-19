@@ -1,0 +1,3 @@
+(library
+ (name lzw)
+ (libraries camlp-streams zarith))

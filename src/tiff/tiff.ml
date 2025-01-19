@@ -1,3 +1,8 @@
+(*
+Created by: Patrick Ferris
+Modified by: George Pool
+*)
+
 open Bigarray
 
 module File = struct

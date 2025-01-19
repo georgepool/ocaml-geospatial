@@ -1,49 +1,47 @@
-open Bigarray
+(* open Bigarray *)
 open Tiff
+open Layer
 
 let () = 
-  let layer = Layer.layer_from_file "test/cea.tiff" Data.UINT8 in
-  let width = Layer.width layer in 
-  let height = Layer.height layer in 
-  let area = Layer.underlying_area layer in
-  let data = Layer.data layer in 
-  Eio.traceln "File size: %ix%i" width height;
-  Layer.set_window layer 0 0 5 5;
-  let layer_total = Layer.sum_layer layer in 
+  let layer = BaseLayer.layer_from_file "test/cea.tiff" Data.UINT8 in
+  BaseLayer.pp_layer layer;
+  BaseLayer.set_window layer 0 0 5 5;
+  let layer_total = BaseLayer.sum_layer layer in 
   Eio.traceln "Total: %i" layer_total; 
-  Eio.traceln "Length of array: %i" (Array1.dim data);
-
 
   Eio.traceln "----------------------------------";
-  let empty_layer = Layer.empty_layer_like layer in 
-  let empty_layer_total = Layer.sum_layer empty_layer in 
-
+  let empty_layer = BaseLayer.empty_layer_like layer in 
+  let empty_layer_total = BaseLayer.sum_layer empty_layer in 
   
   Eio.traceln "Empty Total: %i" empty_layer_total; 
   Eio.traceln "----------------------------------";
 
-  let operation = Layer.add_layer layer empty_layer in
+  let layer1op = OperationLayer.operation_layer layer in
+  let layer2op = OperationLayer.operation_layer empty_layer in 
 
-  let output_layer = Layer.eval_layer operation in
+  let operation = OperationLayer.add_layer layer1op layer2op in
+
+  let output_layer = OperationLayer.eval_layer_operation operation in
 
 
-  Eio.traceln "The total of the operation: %i" (Layer.sum_layer output_layer); 
+  Eio.traceln "The total of the operation: %i" (BaseLayer.sum_layer output_layer); 
   Eio.traceln "----------------------------------";
   Eio.traceln "Now going to add 1 to everything in that output...";
 
-  let operation2 = Layer.add operation 1 in 
-  let output_layer2 = Layer.eval_layer operation2 in 
-  Eio.traceln "The total after adding 1 to everything: %i" (Layer.sum_layer output_layer2);
+  let layer3op = OperationLayer.operation_layer output_layer in
+  let layer4op = OperationLayer.add layer3op 1 in 
+  let output_layer2 = OperationLayer.eval_layer_operation layer4op in 
+  Eio.traceln "The total after adding 1 to everything: %i" (BaseLayer.sum_layer output_layer2);
 
   Eio.traceln "----------------------------------";
 
-  let operation3 = Layer.add empty_layer 1 in 
-  let output_layer3 = Layer.eval_layer operation3 in 
-  Eio.traceln "The total after adding 1 to empty layer: %i" (Layer.sum_layer output_layer3);
+  let layer5op = OperationLayer.add layer2op 1 in 
+  let output_layer3 = OperationLayer.eval_layer_operation layer5op in 
+  Eio.traceln "The total after adding 1 to empty layer: %i" (BaseLayer.sum_layer output_layer3);
 
   Eio.traceln "----------------------------------\n\n\n";
 
-  let map_layer = Layer.map_layer layer (fun x -> x + 1) in
+  (* let map_layer = BaseLayer.map_layer layer (fun x -> x + 1) in
   Eio.traceln "Map_layer_total: %i" (Layer.sum_layer map_layer);
 
   Layer.pp_area area;
@@ -57,4 +55,4 @@ let () =
   Layer.pp_window intersection_window;
 
   print_endline "Running application with Layer library!";
-
+ *)

@@ -1,79 +1,63 @@
 open Bigarray
 
 module BaseLayer : sig
-    (* type t *)
+
+  type layer_data = (int, int8_unsigned_elt,  c_layout) Array1.t
+
+  type pixel_scale
+
+  type t
+
+  val width : t -> int
+
+  val height : t -> int
+
+  val data : t -> layer_data
+
+  val underlying_area : t -> Area.t
+
+  val active_area : t -> Area.t
+
+  val window : t -> Window.t
+
+  val pixel_scale :  t -> pixel_scale
+
+  val pp_pixel_scale : pixel_scale -> unit
+
+  val pp_layer : t -> unit
+
+  val layer_from_file : string -> Tiff.Data.data_type -> t
+
+  val set_window : t -> int -> int -> int -> int -> unit
+
+  val set_window_from_area : t -> Area.t -> Window.t
+
+  val empty_layer_like : t -> t 
+
+  val find_intersection : t list -> Area.t
+
+  val sum_layer : t -> int
+
+  val map_layer : t -> (int -> int) -> t
+
 end
 
-type layer
+module OperationLayer : sig
+  
+  type operation
 
-type pixel_scale = {
-  xstep: float;
-  ystep: float
-}
-type layer_data = (int, int8_unsigned_elt,  c_layout) Array1.t
+  type t
 
-type operation = 
-  | ADD_LAYER of layer_operation
-  | MUL_LAYER of layer_operation
-  | ADD_SCALAR of int
-  | MUL_SCALAR of int
+  val operation_layer : BaseLayer.t -> t
 
-and layer_operation = 
-| SingleLayer of layer 
-| LayerOperation of layer_operation * operation
+  val eval_layer_operation : t -> BaseLayer.t
 
-type area
+  val mul : t -> int -> t
 
-type window = {
-  xoffset: int;
-  yoffset: int;
-  xsize: int;
-  ysize: int
-}
+  val add : t -> int -> t
 
-val layer_from_file : string -> Tiff.Data.data_type -> layer_operation
+  val mul_layer : t -> t -> t
 
-val exec_layer : layer_operation -> layer_operation
+  val add_layer : t -> t -> t
 
-val width : layer_operation -> int
-
-val height : layer_operation -> int 
-
-val data : layer_operation -> layer_data
-
-val sum_layer : layer_operation -> int
-
-val underlying_area : layer_operation -> area 
-
-val active_area : layer_operation -> area 
-
-val window : layer_operation -> window
-
-
-val map_layer : layer_operation -> (int -> int) -> layer_operation
-
-val find_intersection : layer_operation list -> area
-
-val set_window_from_area : layer_operation -> area -> window
-
-val empty_layer_like : layer_operation -> layer_operation
-
-val mul : layer_operation -> int -> layer_operation
-
-val add : layer_operation -> int -> layer_operation
-
-val mul_layer : layer_operation -> layer_operation -> layer_operation
-
-val add_layer : layer_operation -> layer_operation -> layer_operation
-
-
-val eval_layer : layer_operation -> layer_operation
-
-val windows_are_equal : window -> window -> bool
-
-val pp_area : area -> unit
-
-val pp_window : window -> unit
-
-
-val set_window : layer_operation -> int -> int -> int -> int -> unit
+end

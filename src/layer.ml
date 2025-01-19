@@ -1,527 +1,356 @@
 open Eio
 open Bigarray
 
-
 module BaseLayer = struct
-  (* type t = {
-    (* data : SomeArrayType; *)
-    width : int;
-    height : int;
-    bounds : float * float * float * float;
-  } *)
 
-  (* let create_layer 
-  (* ~data  *)
-  ~width ~height ~bounds = {
-    (* data; *)
-    width;
-    height;
-    bounds
+  type layer_data = (int, int8_unsigned_elt,  c_layout) Array1.t
+
+  type pixel_scale = {
+    xstep: float;
+    ystep: float
   }
 
-  let width t = t.width
-  let height t = t.height
-  let bounds t = t.bounds *)
+  type t = {
+    width: int;
+    height: int;
+    data: layer_data;
+    underlying_area: Area.t;
+    (* mutable *) active_area: Area.t;
+    mutable window: Window.t;
+    pixel_scale: pixel_scale
+  }
 
+  let width layer = layer.width
 
+  let height layer = layer.height
+
+  let data layer = layer.data
+
+  let underlying_area layer = layer.underlying_area
+
+  let active_area layer = layer.active_area
+
+  let window layer = layer.window
+
+  let pixel_scale layer = layer.pixel_scale
+
+  let pp_pixel_scale pixel_scale = 
+    Eio.traceln "Pixel Scale: xstep: %f ystep: %f" pixel_scale.xstep pixel_scale.ystep
+
+  let pp_layer layer = 
+    Eio.traceln "Width: %i Height: %i" layer.width layer.height;
+    Eio.traceln "Underlying area:";
+    Area.pp_area layer.underlying_area;
+    Eio.traceln "Active area:";
+    Area.pp_area layer.active_area;
+    Window.pp_window layer.window;
+    pp_pixel_scale layer.pixel_scale;;
+
+  let layer_from_file file_name data_type = 
+    Eio_main.run @@ fun env ->
+      let fs = Stdenv.fs env in
+      Path.(with_open_in (fs / file_name)) @@ fun r ->
+        let tiff = Tiff.from_file (File.pread_exact r) data_type in
+        let ifd = Tiff.ifd tiff in 
+        let width = Tiff.Ifd.width ifd in 
+        let height = Tiff.Ifd.width ifd in 
+        let data_wrapper = Tiff.data tiff in
+        let data = 
+          match data_wrapper with 
+          | Tiff.Data.UInt8Data(arr) -> arr 
+          | _ -> raise Tiff.Data.TiffDataHasWrongType
+        in
+        (* let data = read_tiff_data ifd (File.pread_exact r data_type) in *)
+        let model_tiepoint = Tiff.Ifd.tiepoint ifd in
+        let model_pixel_scale = Tiff.Ifd.pixel_scale ifd in
+        let geo_x = model_tiepoint.(3) in 
+        let geo_y = model_tiepoint.(4) in
+        let scale_x = model_pixel_scale.(0) in 
+        let scale_y = model_pixel_scale.(1) in 
+        let left = geo_x in 
+        let top = geo_y in 
+        let right = geo_x +. ((float_of_int width) *. scale_x) in
+        let bottom = geo_y -. ((float_of_int height) *. scale_y) in      
+        let area = {Area.left=left; Area.top=top; Area.right=right; Area.bottom=bottom} in 
+        let window = {
+          Window.xoffset=0;
+          Window.yoffset=0;
+          Window.xsize=width;
+          Window.ysize=(1 * height);
+        } in
+        let pixel_scale = {
+          xstep = scale_x;
+          ystep = scale_y
+        } in
+        {
+          width = width; 
+          height = height; 
+          data = data; 
+          underlying_area = area;
+          active_area = area;
+          window = window;
+          pixel_scale = pixel_scale
+        }
+  
+  let round_down_pixels value (*pixelscale*) = Float.floor value
+
+  let round_up_pixels value (*pixelscale*) = Float.ceil value
+
+  let set_window layer xoffset yoffset xsize ysize =
+    let new_window = 
+      {
+        Window.xoffset = xoffset;
+        Window.yoffset = yoffset;
+        Window.xsize = xsize;
+        Window.ysize = ysize
+      } in
+    layer.window <- new_window;;
+  
+  let set_window_from_area layer area =
+    let underlying_area = layer.underlying_area in 
+    let pixel_scale = layer.pixel_scale in
+    let area_left = Area.left area in
+    let area_right = Area.right area in 
+    let area_top = Area.top area in 
+    let area_bottom = Area.bottom area in
+    let underlying_area_left = Area.left underlying_area in
+    let underlying_area_top = Area.top underlying_area in 
+    let xoffset_float = round_down_pixels ((area_left -. underlying_area_left) /. pixel_scale.xstep) (*pixel_scale.xstep*) in
+    let yoffset_float = round_down_pixels ((underlying_area_top -. area.top) /. (pixel_scale.ystep *. 1.0)) (*(pixel_scale.ystep *. -1.0)*) in
+    let xsize_float = round_up_pixels ((area_right -. area_left) /. pixel_scale.xstep) (*pixel_scale.xstep)*) in
+    let ysize_float = round_up_pixels ((area_top -. area_bottom) /. (pixel_scale.ystep *. 1.0)) (*(pixel_scale.ystep *. -1.0)*) in
+    let xoffset = int_of_float xoffset_float in 
+    let yoffset = int_of_float yoffset_float in
+    let xsize = int_of_float xsize_float in 
+    let ysize = int_of_float ysize_float in
+    {
+      Window.xoffset = xoffset;
+      Window.yoffset = yoffset;
+      Window.xsize = xsize;
+      Window.ysize = ysize
+    }
+  
+  let empty_layer_like layer =
+    let width = width layer in
+    let height = height layer in
+    let length = width * height in
+    let data = Array1.create int8_unsigned c_layout length in
+    let underlying_area = underlying_area layer in
+    let original_active_area = active_area layer in
+    let active_area = Area.copy_area original_active_area in
+    let original_window = window layer in 
+    let window = Window.copy_window original_window in
+    let pixel_scale = pixel_scale layer in
+    {
+      width = width; 
+      height = height; 
+      data = data; 
+      underlying_area = underlying_area; 
+      active_area = active_area; 
+      window = window;
+      pixel_scale = pixel_scale
+    }
+
+  let rec map f xs = 
+    match xs with 
+    | [] -> []
+    | x::xs -> (f x) :: (map f xs)
+  
+  let find_intersection layer_list = 
+    let area_list = map active_area layer_list in
+    Area.find_intersection_areas area_list
+
+  let sum_layer layer = (* needs to consider window! *)
+    let arr = data layer in
+    let sum = ref 0 in
+    let window = window layer in
+    let xsize = Window.xsize window in 
+    let ysize = Window.ysize window in 
+    let xoffset = Window.xoffset window in 
+    let yoffset = Window.yoffset window in 
+    let width = width layer in 
+    let count = ref 0 in 
+    Eio.traceln "Ysize: %i xsize: %i" ysize xsize;
+    for y = yoffset to (ysize-1) do
+      count := 0;
+      for x = xoffset to (xsize-1) do
+        let item = Array1.get arr (x + (y * width)) in
+        Eio.traceln "Actual value: %i" item;
+        sum := !sum + item;
+        (* sum := !sum + Array1.get arr (x + (y * width)); *)
+        count := !count + 1;
+      done;
+    done;
+    Eio.traceln "Count: %i" !count;
+    !sum
+
+  let map_layer layer f = (* needs to start considering window stuff!!! *)
+    let data = data layer in 
+    let length = Array1.dim data in
+  
+    for i = 0 to length - 1 do
+      let value = Array1.get data i in
+      Array1.set data i (f value)
+    done;
+
+    let original_window = window layer in
+    let window = Window.copy_window original_window in
+    
+    let original_active_area = active_area layer in 
+    let active_area = Area.copy_area original_active_area in
+    { 
+      width = (width layer);
+      height = (height layer);
+      data = data;
+      underlying_area = (underlying_area layer);
+      active_area = active_area;
+      window = window;
+      pixel_scale = (pixel_scale layer)
+    }
+  
 end
 
-type layer_data = (int, int8_unsigned_elt,  c_layout) Array1.t
+module OperationLayer = struct
+  exception InvalidArg of string;;
 
-(* do windoow as area instead 
-my issue is the gdal magic thats like "doo doo doo here are these coordinates this is what it looks like pixel-based (i think)"
-*)
-
-type pixel_scale = {
-  xstep: float;
-  ystep: float
-}
-
-type area = {
-  left: float;
-  top: float;
-  right: float;
-  bottom: float
-}
-
-type window = {
-  xoffset: int;
-  yoffset: int;
-  xsize: int;
-  ysize: int
-}
-
-type layer = {
-  width: int;
-  height: int;
-  data: layer_data;
-  underlying_area: area;
-  (* mutable *) active_area: area;
-  mutable window: window;
-  pixel_scale: pixel_scale
-}
-
-type operation = 
-  | ADD_LAYER of layer_operation
-  | MUL_LAYER of layer_operation
-  | ADD_SCALAR of int
-  | MUL_SCALAR of int
-
-and layer_operation = 
-| SingleLayer of layer 
-| LayerOperation of layer_operation * operation
-
-exception IntersectionDoesNotExist of string;;
-
-exception NestedLayerGivenNotSingleLayer;;
-
-(* exception WindowsAreNotSameSize;; *)
-
-exception InvalidArg of string;;
-(* let rec exec_layer layer_operation = 
-  match layer_operation with
-  | SingleLayer(_) -> layer_operation
-  | LayerOperation(layer_operation_left, operation(x)) ->
-    let left = exec_layer layer_operation_left in 
-    match operation with 
-    | ADD_LAYER() *)
-
-let windows_are_equal window1 window2 = 
-  (window1.xoffset = window2.xoffset) && 
-  (window1.yoffset = window2.yoffset) &&
-  (window1.xsize = window2.xsize) &&
-  (window1.ysize = window2.ysize) 
-
-(* let exec_add_layer left_layer right_layer = 
-  match left_layer, right_layer with
-  | SingleLayer(left), SingleLayer(right) ->
-    if windows_are_equal (left.window) (right.window) then
-      blah blah blah
-    else 
-      raise WindowsAreNotSameSize
-  | _ -> raise NestedLayerGivenNotSingleLayer *)
-
-(* let add_layer_data lhs rhs index result = 
-  let len = Array1.dim lhs in 
-  if len <> Array1.dim rhs then
-   raise (InvalidArg "Arrays must have same length")
-  else
-    (* let result = Array1.create (Array1.kind lhs) (Array1.layout lhs) len in *)
-    for i = 0 to (len - 1) do
-      result.{(i+index)} <- lhs.{i} + rhs.{i}
-    done;;
-
-
-let mul_layer_data lhs rhs index result = 
-  let len = Array1.dim lhs in 
-  if len <> Array1.dim rhs then
-    raise (InvalidArg "Arrays must have same length")
-  (* let result = Array1.create (Array1.kind lhs) (Array1.layout lhs) len in *)
-  else
-    for i = 0 to (len - 1) do
-      result.{(i+index)} <- lhs.{i} * rhs.{i}
-    done;;
-
-let add_layer_data_scalar lhs x index result = 
-  let len = Array1.dim lhs in 
-  (* let result = Array1.create (Array1.kind lhs) (Array1.layout lhs) len in *)
-  for i = 0 to (len - 1) do
-    result.{(i+index)} <- lhs.{i} + x
-  done;;
-
-let mul_layer_data_scalar lhs x index result = 
-  let len = Array1.dim lhs in 
-  (* let result = Array1.create (Array1.kind lhs) (Array1.layout lhs) len in *)
-  for i = 0 to (len - 1) do
-    result.{(i+index)} <- lhs.{i} * x
-  done;; *)
-
-let add_layer_data lhs rhs = 
-  let len = Array1.dim lhs in 
-  if len <> Array1.dim rhs then
-    raise (InvalidArg "Arrays must have same length")
-  else
+  type operation = 
+    | ADD_LAYER of t
+    | MUL_LAYER of t
+    | ADD_SCALAR of int
+    | MUL_SCALAR of int
+  
+  and t = 
+  | SingleLayer of BaseLayer.t 
+  | LayerOperation of t * operation
+  
+  let operation_layer layer = SingleLayer(layer)
+  
+  let add_layer_data lhs rhs = 
+    let len = Array1.dim lhs in 
+    if len <> Array1.dim rhs then
+      raise (InvalidArg "Arrays must have same length")
+    else
+      let result = Array1.create (Array1.kind lhs) (Array1.layout lhs) len in
+      for i = 0 to (len - 1) do
+        result.{i} <- lhs.{i} + rhs.{i}
+      done;
+      result
+  
+  
+  let mul_layer_data lhs rhs = 
+    let len = Array1.dim lhs in 
+    if len <> Array1.dim rhs then
+      raise (InvalidArg "Arrays must have same length")
+    else
+      let result = Array1.create (Array1.kind lhs) (Array1.layout lhs) len in
+      for i = 0 to (len - 1) do
+        result.{i} <- lhs.{i} * rhs.{i}
+      done;
+      result
+  
+  let add_layer_data_scalar lhs x = 
+    let len = Array1.dim lhs in 
     let result = Array1.create (Array1.kind lhs) (Array1.layout lhs) len in
     for i = 0 to (len - 1) do
-      result.{i} <- lhs.{i} + rhs.{i}
+      result.{i} <- lhs.{i} + x
     done;
     result
-
-
-let mul_layer_data lhs rhs = 
-  let len = Array1.dim lhs in 
-  if len <> Array1.dim rhs then
-    raise (InvalidArg "Arrays must have same length")
-  else
+  
+  let mul_layer_data_scalar lhs x = 
+    let len = Array1.dim lhs in 
     let result = Array1.create (Array1.kind lhs) (Array1.layout lhs) len in
     for i = 0 to (len - 1) do
-      result.{i} <- lhs.{i} * rhs.{i}
+      result.{i} <- lhs.{i} * x
     done;
     result
-
-let add_layer_data_scalar lhs x = 
-  let len = Array1.dim lhs in 
-  let result = Array1.create (Array1.kind lhs) (Array1.layout lhs) len in
-  for i = 0 to (len - 1) do
-    result.{i} <- lhs.{i} + x
-  done;
-  result
-
-let mul_layer_data_scalar lhs x = 
-  let len = Array1.dim lhs in 
-  let result = Array1.create (Array1.kind lhs) (Array1.layout lhs) len in
-  for i = 0 to (len - 1) do
-    result.{i} <- lhs.{i} * x
-  done;
-  result
-
-
-let rec dfs_layer layer_operation =
-  match layer_operation with
-  | SingleLayer(layer) -> layer
-  | LayerOperation(l, _) -> dfs_layer l
-
-
-let eval_single_layer layer index =
-  let window = layer.window in 
-  let xoffset = window.xoffset in 
-  let xsize = window.xsize in 
-  let data = Array1.sub (layer.data) (index + xoffset) xsize in
-  data
   
-
-let rec eval_layer_row layer_operation index_y =
-  (* check if windows are equal? *) 
-  (* maybe just have to return an array in the end
-  this definitely does not work!!!*)
-  match layer_operation with
-  | SingleLayer(layer) -> eval_single_layer layer index_y 
-  | LayerOperation(l, o) -> 
-    let left_data = eval_layer_row l index_y in 
-    match o with 
-    | ADD_LAYER(r) ->
-      let right_data = eval_layer_row r index_y in 
-      add_layer_data left_data right_data 
-    | MUL_LAYER(r) -> 
-      let right_data = eval_layer_row r index_y in 
-      mul_layer_data left_data right_data
-    | ADD_SCALAR(x) -> 
-      add_layer_data_scalar left_data x
-    | MUL_SCALAR(x) ->
-      mul_layer_data_scalar left_data x
-      (* itemwise addition of left and right*)
-
-
-let copy_to_index source_array destination_array index = 
-  let source_array_length = Array1.dim source_array in
-  let destination_array_length = Array1.dim destination_array in 
-
-  if ((index < 0) || (index + source_array_length > destination_array_length)) then 
-    raise (InvalidArg "Index out of bounds / destination array is too small")
-  else
-    for j = 0 to source_array_length - 1 do
-      Array1.set destination_array (index + j) (Array1.get source_array j)
-    done;;
-
-  (* else
-    raise WindowsAreNotSameSize
-   output_layer *)
-
+  let rec dfs_layer layer_operation =
+    match layer_operation with
+    | SingleLayer(layer) -> layer
+    | LayerOperation(l, _) -> dfs_layer l
   
-(* let rec save_layer layer_operation output_layer = 
-  match layer_operation with 
-  | SingleLayer(_) -> layer_operation
-  | LayerOperation(l, o) ->
-    let left = exec_layer layer_operation in 
-    match o with 
-    | ADD_LAYER(r) ->
-      let right = exec_layer layer_operation incr_offset
-      (*Add layer shit*)
-    | MUL_LAYER(r) ->
-      let right = exec_layer layer_operation incr_offset
-      (*Mul layer shit*)
-    | ADD_SCALAR(x) -> 
-      blah blah blah
-    | MUL_SCALAR(x) -> 
-      blah blah blah *)
-        
-let rec exec_layer layer_operation = (* absolute draft not finished!!*)
-  match layer_operation with
-  | SingleLayer(_) -> layer_operation (* should i just switch this to being normal layer again?*)
-  | LayerOperation(layer_operation, _) -> exec_layer layer_operation
-
-let rec width layer_operation = 
-  match layer_operation with
-  | SingleLayer(layer) -> layer.width
-  | LayerOperation(layer_operation, _) -> width (exec_layer layer_operation)  (* when exec  layer is right this is right*)
-
-let rec height layer_operation = 
-  match layer_operation with
-  | SingleLayer(layer) -> layer.height
-  | LayerOperation(layer_operation, _) -> height (exec_layer layer_operation)
   
-let rec data layer_operation = 
-  match layer_operation with
-  | SingleLayer(layer) -> layer.data
-  | LayerOperation(layer_operation, _) -> data (exec_layer layer_operation)
-
-let rec active_area layer_operation = 
-  match layer_operation with
-  | SingleLayer(layer) -> layer.active_area
-  | LayerOperation(layer_operation, _) -> active_area (exec_layer layer_operation)
+  let eval_single_layer layer index =
+    let window = BaseLayer.window layer in 
+    let xoffset = Window.xoffset window in 
+    let xsize = Window.xsize window in 
+    let data = Array1.sub (layer.data) (index + xoffset) xsize in
+    data
   
-let rec underlying_area layer_operation = 
-  match layer_operation with
-  | SingleLayer(layer) -> layer.underlying_area
-  | LayerOperation(layer_operation, _) -> underlying_area (exec_layer layer_operation)
-
-let rec window layer_operation = 
-  match layer_operation with
-  | SingleLayer(layer) -> layer.window
-  | LayerOperation(layer_operation, _) -> window (exec_layer layer_operation)
-
-
-let rec pixel_scale layer_operation = 
-  match layer_operation with 
-  | SingleLayer(layer) -> layer.pixel_scale
-  | LayerOperation(layer_operation, _) -> pixel_scale (exec_layer layer_operation)
-
-  (* let tiff_from_filename file_name = 
-    Eio_main.run @@ fun env ->
-    let fs = Stdenv.fs env in
-    Path.(with_open_in (fs / file_name)) @@ fun r ->
-    let tiff = Tiff.from_file (File.pread_exact r) in
-    tiff *)
-
-(* let read_tiff_data ifd ro = 
-  let data_offsets = Tiff.Ifd.data_offsets ifd in
-  let data_bytecounts = Tiff.Ifd.data_bytecounts ifd in 
-  let rows_per_strip = Tiff.Ifd.rows_per_strip ifd in 
-  let width = Tiff.Ifd.width ifd in 
-  let data = Tiff.read_data2_uint8 ro data_offsets data_bytecounts rows_per_strip width in
-  data *)
-
-
-let layer_from_file file_name data_type = 
-  Eio_main.run @@ fun env ->
-    let fs = Stdenv.fs env in
-    Path.(with_open_in (fs / file_name)) @@ fun r ->
-      let tiff = Tiff.from_file (File.pread_exact r) data_type in
-      let ifd = Tiff.ifd tiff in 
-      let width = Tiff.Ifd.width ifd in 
-      let height = Tiff.Ifd.width ifd in 
-      let data_wrapper = Tiff.data tiff in
-      let data = 
-        match data_wrapper with 
-        | Tiff.Data.UInt8Data(arr) -> arr 
-        | _ -> raise Tiff.Data.TiffDataHasWrongType
-      in
-      (* let data = read_tiff_data ifd (File.pread_exact r data_type) in *)
-      let model_tiepoint = Tiff.Ifd.tiepoint ifd in
-      let model_pixel_scale = Tiff.Ifd.pixel_scale ifd in
-      let geo_x = model_tiepoint.(3) in 
-      let geo_y = model_tiepoint.(4) in
-      let scale_x = model_pixel_scale.(0) in 
-      let scale_y = model_pixel_scale.(1) in 
-      let left = geo_x in 
-      let top = geo_y in 
-      let right = geo_x +. ((float_of_int width) *. scale_x) in
-      let bottom = geo_y -. ((float_of_int height) *. scale_y) in      
-      let area = {left; top; right; bottom} in 
-      let window = {
-        xoffset=0;
-        yoffset=0;
-        xsize=width;
-        ysize=(1 * height);
-      } in
-      let pixel_scale = {
-        xstep = scale_x;
-        ystep = scale_y
-      } in
-      let layer = {
-        width = width; 
-        height = height; 
-        data = data; 
-        underlying_area = area;
-        active_area = area;
-        window = window;
-        pixel_scale = pixel_scale
-      } in
-      SingleLayer(layer)
-
-let intersect_areas w1 w2 = 
-  let left = max (w1.left) (w2.left) in
-  let top = max (w1.top) (w2.top) in
-  let right = min (w1.right) (w2.right) in
-  let bottom = min (w1.bottom) (w2.bottom) in
-  if (left > right || top < bottom) then
-    raise (IntersectionDoesNotExist "There is no intersection here")
-  else 
-    {left; top; right; bottom}
-
-let rec find_intersection_areas_helper area_list area_acc =
-  match area_list with 
-  | [] -> area_acc
-  | w::ws -> find_intersection_areas_helper ws (intersect_areas area_acc w)
-
-let find_intersection_areas area_list = 
-  match area_list with
-  | [] -> raise (IntersectionDoesNotExist "No intersection of list of 0 areas")
-  | w::ws -> find_intersection_areas_helper ws w
-
-let rec map f xs = 
-  match xs with 
-  | [] -> []
-  | x::xs -> (f x) :: (map f xs)
-
-let find_intersection layer_list = 
-  let area_list = map active_area layer_list in
-  find_intersection_areas area_list
-
-let round_down_pixels value (*pixelscale*) = Float.floor value
-
-let round_up_pixels value (*pixelscale*) = Float.ceil value
-
-let set_window_from_area layer area =
-  let layer = exec_layer layer in
-  let underlying_area = underlying_area layer in 
-  let pixel_scale = pixel_scale layer in
-  let xoffset_float = round_down_pixels ((area.left -. underlying_area.left) /. pixel_scale.xstep) (*pixel_scale.xstep*) in
-  let yoffset_float = round_down_pixels ((underlying_area.top -. area.top) /. (pixel_scale.ystep *. 1.0)) (*(pixel_scale.ystep *. -1.0)*) in
-  let xsize_float = round_up_pixels ((area.right -. area.left) /. pixel_scale.xstep) (*pixel_scale.xstep)*) in
-  let ysize_float = round_up_pixels ((area.top -. area.bottom) /. (pixel_scale.ystep *. 1.0)) (*(pixel_scale.ystep *. -1.0)*) in
-  let xoffset = int_of_float xoffset_float in 
-  let yoffset = int_of_float yoffset_float in
-  let xsize = int_of_float xsize_float in 
-  let ysize = int_of_float ysize_float in
-  {
-    xoffset;
-    yoffset;
-    xsize;
-    ysize
-  }
-
-
-let map_layer layer f = (* needs to start considering window stuff!!! *)
-  let layer = exec_layer layer in 
-  let data = data layer in 
-  let length = Array1.dim data in
-
-  for i = 0 to length - 1 do
-    let value = Array1.get data i in
-    Array1.set data i (f value)
-  done;
-
-  let layer = { 
-    width=(width layer);
-    height=(height layer);
-    data=data;
-    underlying_area = (underlying_area layer);
-    active_area = (active_area layer);
-    window=(window layer);
-    pixel_scale = (pixel_scale layer)} in 
-  SingleLayer(layer)
-
-(* for union I need to check if they are disjoint or whether it comes together *)
-
-
-let mul lhs x = LayerOperation(lhs, MUL_SCALAR(x))
-
-let mul_layer lhs rhs = LayerOperation(lhs, MUL_LAYER(rhs))  (* assuming that RHS is alreayd a layer operartion *)
-
-let add lhs x = LayerOperation(lhs, ADD_SCALAR(x))
-
-let add_layer lhs rhs = LayerOperation(lhs, ADD_LAYER(rhs))
-
-
-let empty_layer_like layer_operation =
-  let layer = exec_layer layer_operation in
-  let width = width layer in
-  let height = height layer in
-  let length = width * height in
-  let data = Array1.create int8_unsigned c_layout length in
-  let underlying_area = underlying_area layer in
-  let active_area = active_area layer in
-  let original_window = window layer in 
-  let window = {
-    xoffset=original_window.xoffset;
-    yoffset=original_window.yoffset;
-    xsize=original_window.xsize;
-    ysize=original_window.ysize;
-  } in 
-  let pixel_scale = pixel_scale layer in
-  let new_layer = {
-    width = width; 
-    height = height; 
-    data = data; 
-    underlying_area = underlying_area; 
-    active_area = active_area; 
-    window = window;
-    pixel_scale = pixel_scale} in
-  SingleLayer(new_layer)
-
-
-let pp_area area = 
-  Eio.traceln "area: left: %f top: %f right: %f bottom: %f" area.left area.top area.right area.bottom
- 
-let pp_window window = 
-  Eio.traceln "window: xoffset: %i yoffset: %i xsize: %i ysize: %i" window.xoffset window.yoffset window.xsize window.ysize
-
-let sum_layer layer_operation = (* needs to consider window! *)
-  let l = exec_layer layer_operation in
-  let arr = data l in
-  let sum = ref 0 in
-  let window = window layer_operation in
-  let xsize = window.xsize in 
-  let ysize = window.ysize in 
-  let xoffset = window.xoffset in 
-  let yoffset = window.yoffset in 
-  let width = width layer_operation in 
-  let count = ref 0 in 
-  Eio.traceln "Ysize: %i xsize: %i" ysize xsize;
-  for y = yoffset to (ysize-1) do
-    count := 0;
-    for x = xoffset to (xsize-1) do
-      let item = Array1.get arr (x + (y * width)) in
-      Eio.traceln "Actual value: %i" item;
-      sum := !sum + item;
-      (* sum := !sum + Array1.get arr (x + (y * width)); *)
-      count := !count + 1;
+  let rec eval_layer_row layer_operation index_y =
+    (* check if windows are equal? *) 
+    (* maybe just have to return an array in the end
+    this definitely does not work!!!*)
+    match layer_operation with
+    | SingleLayer(layer) -> eval_single_layer layer index_y 
+    | LayerOperation(l, o) -> 
+      let left_data = eval_layer_row l index_y in 
+      match o with 
+      | ADD_LAYER(r) ->
+        let right_data = eval_layer_row r index_y in 
+        add_layer_data left_data right_data 
+      | MUL_LAYER(r) -> 
+        let right_data = eval_layer_row r index_y in 
+        mul_layer_data left_data right_data
+      | ADD_SCALAR(x) -> 
+        add_layer_data_scalar left_data x
+      | MUL_SCALAR(x) ->
+        mul_layer_data_scalar left_data x
+        (* itemwise addition of left and right*)
+  
+  
+  let copy_to_index source_array destination_array index = 
+    let source_array_length = Array1.dim source_array in
+    let destination_array_length = Array1.dim destination_array in 
+  
+    if ((index < 0) || (index + source_array_length > destination_array_length)) then 
+      raise (InvalidArg "Index out of bounds / destination array is too small")
+    else
+      for j = 0 to source_array_length - 1 do
+        Array1.set destination_array (index + j) (Array1.get source_array j)
+      done;;
+  
+  let eval_layer_operation layer_operation = (* does not work when the files are not the same size *)
+    let layer = dfs_layer layer_operation in
+    let output_layer = BaseLayer.empty_layer_like layer in (* this should maybe do its own thing *)
+    let output_layer_data = BaseLayer.data output_layer in
+    let yoffset = ref 0 in
+    (* Window will be same for all layers in operation*)
+    let window = BaseLayer.window layer in 
+    let ysize = Window.ysize window in
+    let width = BaseLayer.width layer in  
+    let xoffset = Window.xoffset window in
+    let ycount = ref 0 in 
+    while !ycount < ysize do
+      yoffset := !ycount * width;
+      let result_data = eval_layer_row layer_operation !yoffset in
+      ycount := !ycount + 1;
+      copy_to_index result_data output_layer_data (!yoffset + xoffset);
     done;
-  done;
-  Eio.traceln "Count: %i" !count;
-  !sum
+    output_layer
+  
+  
+    let layer_operation_windows_are_equal lhs rhs= 
+      (* assume windows within lhs and rhs are all equal*)
+      let lhs_window = BaseLayer.window (dfs_layer lhs) in
+      let rhs_window = BaseLayer.window (dfs_layer rhs) in  
+      Window.windows_are_equal lhs_window rhs_window 
+      
+    let mul lhs x = LayerOperation(lhs, MUL_SCALAR(x))
+  
+    let add lhs x = LayerOperation(lhs, ADD_SCALAR(x))
+  
+    let mul_layer lhs rhs = 
+      if layer_operation_windows_are_equal lhs rhs then
+        LayerOperation(lhs, MUL_LAYER(rhs))  (* assuming that RHS is alreayd a layer operartion *)
+      else 
+        raise Window.WindowsAreNotSameSize
+    
+    let add_layer lhs rhs =
+      if layer_operation_windows_are_equal lhs rhs then
+        LayerOperation(lhs, ADD_LAYER(rhs))
+      else
+        raise Window.WindowsAreNotSameSize
+    
+end
 
-
-(* TODO: 1. bounds, 2. areas *)
-
-let eval_layer layer_operation = (* does not work when the files are not the same size *)
-  let layer = dfs_layer layer_operation in
-  let output_layer = empty_layer_like layer_operation in 
-  let output_layer_data = data output_layer in
-  (* if windows_are_equal layer.window output_layer.window then *)
-  let yoffset = ref 0 in
-  let ysize = layer.window.ysize in
-  let width = layer.width in  
-  let xoffset = layer.window.xoffset in
-  let ycount = ref 0 in 
-  while !ycount < ysize do
-    yoffset := !ycount * width;
-    let result_data = eval_layer_row layer_operation !yoffset in
-    ycount := !ycount + 1;
-    copy_to_index result_data output_layer_data (!yoffset + xoffset);
-  done;
-  output_layer
-
-let set_window layer_operation xoffset yoffset xsize ysize =
-  let new_window = 
-    {
-      xoffset = xoffset;
-      yoffset = yoffset;
-      xsize = xsize;
-      ysize = ysize
-    } in
-  match layer_operation with
-  | SingleLayer(layer) -> 
-    layer.window <- new_window;
-  | _ -> raise NestedLayerGivenNotSingleLayer
