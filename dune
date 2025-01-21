@@ -1,6 +1,6 @@
 (executable
  (name main)
- (libraries eio_main bigarray cstruct layer))
+ (libraries eio_main area window bigarray cstruct layer))
 
 (executable
  (name main_tiff)

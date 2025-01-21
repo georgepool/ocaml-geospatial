@@ -1,9 +1,45 @@
 open Eio
 open Bigarray
 
-module BaseLayer = struct
 
-  type layer_data = (int, int8_unsigned_elt,  c_layout) Array1.t
+module type LayerElement = sig
+  type t
+  type layout
+  val kind : (t, layout) Bigarray.kind
+  val tiff_data_type: Tiff.Data.data_type
+  val zero : t
+  val add : t -> t -> t
+  val mul : t -> t -> t
+  val to_string : t -> string
+  (* constraint t = int -> tiff_data_type = Tiff.Data.UINT8
+  constraint t = float -> tiff_data_type = Tiff.Data.Float *)
+end
+
+module UInt8Element = struct
+  type t = int
+  type layout = int8_unsigned_elt
+  let kind = Bigarray.int8_unsigned
+  let tiff_data_type = Tiff.Data.UINT8
+  let zero = 0
+  let add = ( + )
+  let mul = ( * )
+  let to_string = string_of_int
+end
+
+module Float32Element = struct
+  type t = float
+  type layout = float64_elt
+  let kind = Bigarray.float64
+  let tiff_data_type = Tiff.Data.FLOAT
+  let zero = 0.0
+  let add = ( +. )
+  let mul = ( *. )
+  let to_string = string_of_float
+end
+
+
+module MakeBaseLayer (E : LayerElement) = struct
+  type layer_data = (E.t, E.layout, c_layout) Array1.t
 
   type pixel_scale = {
     xstep: float;
@@ -15,7 +51,7 @@ module BaseLayer = struct
     height: int;
     data: layer_data;
     underlying_area: Area.t;
-    (* mutable *) active_area: Area.t;
+    (* mutable*) active_area: Area.t;
     mutable window: Window.t;
     pixel_scale: pixel_scale
   }
@@ -46,7 +82,8 @@ module BaseLayer = struct
     Window.pp_window layer.window;
     pp_pixel_scale layer.pixel_scale;;
 
-  let layer_from_file file_name data_type = 
+  let layer_from_file file_name = 
+    let data_type = E.tiff_data_type in
     Eio_main.run @@ fun env ->
       let fs = Stdenv.fs env in
       Path.(with_open_in (fs / file_name)) @@ fun r ->
@@ -56,11 +93,19 @@ module BaseLayer = struct
         let height = Tiff.Ifd.width ifd in 
         let data_wrapper = Tiff.data tiff in
         let data = 
-          match data_wrapper with 
-          | Tiff.Data.UInt8Data(arr) -> arr 
+          match data_wrapper with
+          | Tiff.Data.UInt8Data(arr) when E.tiff_data_type = Tiff.Data.UINT8 ->
+              if Obj.magic E.kind == Bigarray.int8_unsigned then
+                (Obj.magic arr : (E.t, E.layout, c_layout) Array1.t)
+              else
+                raise Tiff.Data.TiffDataHasWrongType
+          | Tiff.Data.FloatData(arr) when E.tiff_data_type = Tiff.Data.FLOAT ->
+              if Obj.magic E.kind == Bigarray.float64 then
+                (Obj.magic arr : (E.t, E.layout, c_layout) Array1.t)
+              else
+                raise Tiff.Data.TiffDataHasWrongType
           | _ -> raise Tiff.Data.TiffDataHasWrongType
         in
-        (* let data = read_tiff_data ifd (File.pread_exact r data_type) in *)
         let model_tiepoint = Tiff.Ifd.tiepoint ifd in
         let model_pixel_scale = Tiff.Ifd.pixel_scale ifd in
         let geo_x = model_tiepoint.(3) in 
@@ -91,12 +136,12 @@ module BaseLayer = struct
           window = window;
           pixel_scale = pixel_scale
         }
-  
+      
   let round_down_pixels value (*pixelscale*) = Float.floor value
 
   let round_up_pixels value (*pixelscale*) = Float.ceil value
-
-  let set_window layer xoffset yoffset xsize ysize =
+  
+  let set_window layer xoffset yoffset xsize ysize = 
     let new_window = 
       {
         Window.xoffset = xoffset;
@@ -105,7 +150,7 @@ module BaseLayer = struct
         Window.ysize = ysize
       } in
     layer.window <- new_window;;
-  
+
   let set_window_from_area layer area =
     let underlying_area = layer.underlying_area in 
     let pixel_scale = layer.pixel_scale in
@@ -129,12 +174,12 @@ module BaseLayer = struct
       Window.xsize = xsize;
       Window.ysize = ysize
     }
-  
+
   let empty_layer_like layer =
     let width = width layer in
     let height = height layer in
     let length = width * height in
-    let data = Array1.create int8_unsigned c_layout length in
+    let data = Array1.create E.kind c_layout length in
     let underlying_area = underlying_area layer in
     let original_active_area = active_area layer in
     let active_area = Area.copy_area original_active_area in
@@ -150,19 +195,19 @@ module BaseLayer = struct
       window = window;
       pixel_scale = pixel_scale
     }
-
-  let rec map f xs = 
-    match xs with 
+  
+  let rec map f xs =
+    match xs with
     | [] -> []
-    | x::xs -> (f x) :: (map f xs)
+    | x :: xs -> (f x) :: (map f xs)
   
   let find_intersection layer_list = 
-    let area_list = map active_area layer_list in
+    let area_list = map active_area layer_list in 
     Area.find_intersection_areas area_list
 
   let sum_layer layer = (* needs to consider window! *)
     let arr = data layer in
-    let sum = ref 0 in
+    let sum = ref E.zero in
     let window = window layer in
     let xsize = Window.xsize window in 
     let ysize = Window.ysize window in 
@@ -175,15 +220,15 @@ module BaseLayer = struct
       count := 0;
       for x = xoffset to (xsize-1) do
         let item = Array1.get arr (x + (y * width)) in
-        Eio.traceln "Actual value: %i" item;
-        sum := !sum + item;
+        Eio.traceln "Actual value: %s" (E.to_string item);
+        sum := (E.add !sum item);
         (* sum := !sum + Array1.get arr (x + (y * width)); *)
         count := !count + 1;
       done;
     done;
     Eio.traceln "Count: %i" !count;
     !sum
-
+  
   let map_layer layer f = (* needs to start considering window stuff!!! *)
     let data = data layer in 
     let length = Array1.dim data in
@@ -210,21 +255,24 @@ module BaseLayer = struct
   
 end
 
-module OperationLayer = struct
+module MakeOperationLayer (E : LayerElement) = struct
+
   exception InvalidArg of string;;
+
+  module BaseLayer = MakeBaseLayer(E)
 
   type operation = 
     | ADD_LAYER of t
     | MUL_LAYER of t
-    | ADD_SCALAR of int
-    | MUL_SCALAR of int
-  
+    | ADD_SCALAR of E.t
+    | MUL_SCALAR of E.t
+
   and t = 
-  | SingleLayer of BaseLayer.t 
-  | LayerOperation of t * operation
+    | SingleLayer of BaseLayer.t
+    | LayerOperation of t * operation
   
   let operation_layer layer = SingleLayer(layer)
-  
+
   let add_layer_data lhs rhs = 
     let len = Array1.dim lhs in 
     if len <> Array1.dim rhs then
@@ -232,11 +280,10 @@ module OperationLayer = struct
     else
       let result = Array1.create (Array1.kind lhs) (Array1.layout lhs) len in
       for i = 0 to (len - 1) do
-        result.{i} <- lhs.{i} + rhs.{i}
+        result.{i} <- (E.add (lhs.{i})  (rhs.{i}))
       done;
       result
-  
-  
+
   let mul_layer_data lhs rhs = 
     let len = Array1.dim lhs in 
     if len <> Array1.dim rhs then
@@ -244,31 +291,30 @@ module OperationLayer = struct
     else
       let result = Array1.create (Array1.kind lhs) (Array1.layout lhs) len in
       for i = 0 to (len - 1) do
-        result.{i} <- lhs.{i} * rhs.{i}
+        result.{i} <- (E.mul (lhs.{i}) (rhs.{i}))
       done;
       result
-  
+
   let add_layer_data_scalar lhs x = 
     let len = Array1.dim lhs in 
     let result = Array1.create (Array1.kind lhs) (Array1.layout lhs) len in
     for i = 0 to (len - 1) do
-      result.{i} <- lhs.{i} + x
+      result.{i} <- (E.add (lhs.{i}) x)
     done;
     result
-  
+
   let mul_layer_data_scalar lhs x = 
     let len = Array1.dim lhs in 
     let result = Array1.create (Array1.kind lhs) (Array1.layout lhs) len in
     for i = 0 to (len - 1) do
-      result.{i} <- lhs.{i} * x
+      result.{i} <- (E.mul (lhs.{i}) x)
     done;
     result
-  
+
   let rec dfs_layer layer_operation =
     match layer_operation with
     | SingleLayer(layer) -> layer
     | LayerOperation(l, _) -> dfs_layer l
-  
   
   let eval_single_layer layer index =
     let window = BaseLayer.window layer in 
@@ -298,7 +344,6 @@ module OperationLayer = struct
         mul_layer_data_scalar left_data x
         (* itemwise addition of left and right*)
   
-  
   let copy_to_index source_array destination_array index = 
     let source_array_length = Array1.dim source_array in
     let destination_array_length = Array1.dim destination_array in 
@@ -309,7 +354,7 @@ module OperationLayer = struct
       for j = 0 to source_array_length - 1 do
         Array1.set destination_array (index + j) (Array1.get source_array j)
       done;;
-  
+
   let eval_layer_operation layer_operation = (* does not work when the files are not the same size *)
     let layer = dfs_layer layer_operation in
     let output_layer = BaseLayer.empty_layer_like layer in (* this should maybe do its own thing *)
@@ -328,29 +373,31 @@ module OperationLayer = struct
       copy_to_index result_data output_layer_data (!yoffset + xoffset);
     done;
     output_layer
-  
-  
-    let layer_operation_windows_are_equal lhs rhs= 
-      (* assume windows within lhs and rhs are all equal*)
-      let lhs_window = BaseLayer.window (dfs_layer lhs) in
-      let rhs_window = BaseLayer.window (dfs_layer rhs) in  
-      Window.windows_are_equal lhs_window rhs_window 
-      
-    let mul lhs x = LayerOperation(lhs, MUL_SCALAR(x))
-  
-    let add lhs x = LayerOperation(lhs, ADD_SCALAR(x))
-  
-    let mul_layer lhs rhs = 
-      if layer_operation_windows_are_equal lhs rhs then
-        LayerOperation(lhs, MUL_LAYER(rhs))  (* assuming that RHS is alreayd a layer operartion *)
-      else 
-        raise Window.WindowsAreNotSameSize
+
+  let layer_operation_windows_are_equal lhs rhs= 
+    (* assume windows within lhs and rhs are all equal*)
+    let lhs_window = BaseLayer.window (dfs_layer lhs) in
+    let rhs_window = BaseLayer.window (dfs_layer rhs) in  
+    Window.windows_are_equal lhs_window rhs_window 
     
-    let add_layer lhs rhs =
-      if layer_operation_windows_are_equal lhs rhs then
-        LayerOperation(lhs, ADD_LAYER(rhs))
-      else
-        raise Window.WindowsAreNotSameSize
-    
+  let mul lhs x = LayerOperation(lhs, MUL_SCALAR(x))
+
+  let add lhs x = LayerOperation(lhs, ADD_SCALAR(x))
+
+  let mul_layer lhs rhs = 
+    if layer_operation_windows_are_equal lhs rhs then
+      LayerOperation(lhs, MUL_LAYER(rhs))  (* assuming that RHS is alreayd a layer operartion *)
+    else 
+      raise Window.WindowsAreNotSameSize
+  
+  let add_layer lhs rhs =
+    if layer_operation_windows_are_equal lhs rhs then
+      LayerOperation(lhs, ADD_LAYER(rhs))
+    else
+      raise Window.WindowsAreNotSameSize
+
 end
 
+module UInt8BaseLayer = MakeBaseLayer(UInt8Element)
+
+module UInt8OperationLayer = MakeOperationLayer(UInt8Element)
