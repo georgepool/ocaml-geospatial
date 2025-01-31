@@ -4,4 +4,4 @@
 
 (executable
  (name main_tiff)
- (libraries eio_main tiff))
+ (libraries eio_main owl tiff))

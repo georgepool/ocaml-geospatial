@@ -1,166 +1,108 @@
 open Bigarray
 
-module type LayerElement = sig
-  type t
-  type layout
-  val kind : (t, layout) Bigarray.kind
-  val tiff_data_type: Tiff.Data.data_type
-  val zero : t
-  val add : t -> t -> t
-  val mul : t -> t -> t
-  val to_string : t -> string
-end
 
-module UInt8Element : sig
-  type t = int
-  type layout = int8_unsigned_elt
-  val kind : (int, int8_unsigned_elt) Bigarray.kind
-  val tiff_data_type : Tiff.Data.data_type
-  val zero : int
-  val add : int -> int -> int
-  val mul : int -> int -> int
-  val to_string : int -> string
-end
-
-module Float32Element : sig 
-  type t = float
-  type layout = float64_elt
-  val kind : (float, float64_elt) Bigarray.kind
-  val tiff_data_type : Tiff.Data.data_type
-  val zero : float
-  val add : float -> float -> float
-  val mul : float -> float -> float
-  val to_string : float -> string
-end
-
-module MakeBaseLayer (E : LayerElement) : sig
-
-  type layer_data = (E.t, E.layout, c_layout) Array1.t
-
+module UInt8Layer : sig
   type pixel_scale
 
-  type t 
+  type tiff_info
 
-  val width : t -> int
+  type ('a, 'b) t
 
-  val height : t -> int
+  val width : (int, int8_unsigned_elt) t -> int
 
-  val data : t -> layer_data
+  val height : (int, int8_unsigned_elt) t -> int
 
-  val underlying_area : t -> Area.t
+  val underlying_area : (int, int8_unsigned_elt) t -> Area.t
 
-  val active_area : t -> Area.t
+  val data : (int, int8_unsigned_elt) t -> (int, int8_unsigned_elt) Tiff.Data.tiff_data
 
-  val window : t -> Window.t
-
-  val pixel_scale :  t -> pixel_scale
-
+  val window : (int, int8_unsigned_elt) t -> Window.t
+  val pixel_scale : (int, int8_unsigned_elt) t -> pixel_scale
   val pp_pixel_scale : pixel_scale -> unit
-
-  val pp_layer : t -> unit
-
-  val layer_from_file : string -> t
-    
-  val set_window : t -> int -> int -> int -> int -> unit
-
-  val set_window_from_area : t -> Area.t -> Window.t
-
-  val empty_layer_like : t -> t 
-
-  val find_intersection : t list -> Area.t
-
-  val sum_layer : t -> E.t
-
-  val map_layer : t -> (E.t -> E.t) -> t
+  val pp_layer : (int, int8_unsigned_elt) t -> unit
+  val read_data : (int, int8_unsigned_elt) t -> unit
+  val layer_from_file : string -> (int, int8_unsigned_elt) t
+  val set_window : (int, int8_unsigned_elt) t -> int -> int -> int -> int -> unit
+  val set_window_from_area : (int, int8_unsigned_elt) t -> Area.t -> Window.t
+  val empty_layer_like : (int, int8_unsigned_elt) t -> (int, int8_unsigned_elt) t
+  val find_intersection : (int, int8_unsigned_elt) t list -> Area.t
 
 end
 
-module MakeOperationLayer (E : LayerElement) : sig
+module FloatLayer : sig
+  type pixel_scale
 
-  type operation
+  type tiff_info
 
-  type t
+  type ('a, 'b) t
 
-  module BaseLayer : module type of MakeBaseLayer(E)
+  val width : (float, float32_elt) t -> int
 
-  val operation_layer : BaseLayer.t -> t
+  val height : (float, float32_elt) t -> int
 
-  val eval_layer_operation : t -> BaseLayer.t
+  val underlying_area : (float, float32_elt) t -> Area.t
 
-  val mul : t -> E.t -> t
 
-  val add : t -> E.t -> t
 
-  val mul_layer : t -> t -> t
-
-  val add_layer : t -> t -> t 
+  val window : (float, float32_elt) t -> Window.t
+  val pixel_scale : (float, float32_elt) t -> pixel_scale
+  val pp_pixel_scale : pixel_scale -> unit
+  val pp_layer : (float, float32_elt) t -> unit
+  val data : ('a, 'b) t -> ('a, 'b) Tiff.Data.tiff_data
+  val read_data : (float, float32_elt) t -> unit
+  val layer_from_file : string -> (float, float32_elt) t
+  val set_window : (float, float32_elt) t -> int -> int -> int -> int -> unit
+  val set_window_from_area : (float, float32_elt) t -> Area.t -> Window.t
+  val empty_layer_like : (float, float32_elt) t -> (float, float32_elt) t
+  val find_intersection : (float, float32_elt) t list -> Area.t
 
 end
 
-module UInt8BaseLayer : module type of MakeBaseLayer(UInt8Element)
 
-module UInt8OperationLayer : module type of MakeOperationLayer(UInt8Element)
+module UInt8OperationLayer : sig
+  
+  exception InvalidArg of string
 
-(* module UInt8Layer : sig 
-  module BaseLayer : sig
+  type ('a, 'b) operation = 
+  | ADD_LAYER of ('a, 'b) t
+  | MUL_LAYER of ('a, 'b) t
+  | ADD_SCALAR of 'a
+  | MUL_SCALAR of 'a
 
-    type layer_data = (int, int8_unsigned_elt,  c_layout) Array1.t
+  and ('a, 'b) t = SingleLayer of ('a, 'b) UInt8Layer.t | LayerOperation of ('a, 'b) t * ('a, 'b) operation
 
-    type pixel_scale
+  val operation_layer : (int, int8_unsigned_elt) UInt8Layer.t -> (int, int8_unsigned_elt) t
 
-    type t
+  val eval_layer_operation : (int, int8_unsigned_elt) t -> (int, int8_unsigned_elt) UInt8Layer.t
+  val mul : (int, int8_unsigned_elt) t -> int -> (int, int8_unsigned_elt) t
+  val add : (int, int8_unsigned_elt) t -> int -> (int, int8_unsigned_elt) t
+  val mul_layer : (int, int8_unsigned_elt) t -> (int, int8_unsigned_elt) t -> (int, int8_unsigned_elt) t
+  val add_layer : (int, int8_unsigned_elt) t -> (int, int8_unsigned_elt) t -> (int, int8_unsigned_elt) t
 
-    val width : t -> int
+  val sum_layer : (int, int8_unsigned_elt) t -> int
 
-    val height : t -> int
+end
 
-    val data : t -> layer_data
+module FloatOperationLayer : sig
+  
+  exception InvalidArg of string
 
-    val underlying_area : t -> Area.t
+  type ('a, 'b) operation = 
+  | ADD_LAYER of ('a, 'b) t
+  | MUL_LAYER of ('a, 'b) t
+  | ADD_SCALAR of 'a
+  | MUL_SCALAR of 'a
 
-    val active_area : t -> Area.t
+  and ('a, 'b) t = SingleLayer of ('a, 'b) UInt8Layer.t | LayerOperation of ('a, 'b) t * ('a, 'b) operation
 
-    val window : t -> Window.t
+  val operation_layer : (float, float32_elt) UInt8Layer.t -> (float, float32_elt) t
 
-    val pixel_scale :  t -> pixel_scale
+  val eval_layer_operation : (float, float32_elt) t -> (float, float32_elt) FloatLayer.t
+  val mul : (float, float32_elt) t -> float -> (float, float32_elt) t
+  val add : (float, float32_elt) t -> float -> (float, float32_elt) t
+  val mul_layer : (float, float32_elt) t -> (float, float32_elt) t -> (float, float32_elt) t
+  val add_layer : (float, float32_elt) t -> (float, float32_elt) t -> (float, float32_elt) t
 
-    val pp_pixel_scale : pixel_scale -> unit
+  val sum_layer : (float, float32_elt) t -> float
 
-    val pp_layer : t -> unit
-
-    val layer_from_file : string -> Tiff.Data.data_type -> t
-
-    val set_window : t -> int -> int -> int -> int -> unit
-
-    val set_window_from_area : t -> Area.t -> Window.t
-
-    val empty_layer_like : t -> t 
-
-    val find_intersection : t list -> Area.t
-
-    val sum_layer : t -> int
-
-    val map_layer : t -> (int -> int) -> t
-
-  end
-
-  module OperationLayer : sig
-    
-    type operation
-
-    type t
-
-    val operation_layer : BaseLayer.t -> t
-
-    val eval_layer_operation : t -> BaseLayer.t
-
-    val mul : t -> int -> t
-
-    val add : t -> int -> t
-
-    val mul_layer : t -> t -> t
-
-    val add_layer : t -> t -> t
-
-  end
-end *)
+end
