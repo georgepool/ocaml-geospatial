@@ -1,9 +1,10 @@
-type t = { left : float; top : float; right : float; bottom : float }
+type t
 
 val left : t -> float
 val top : t -> float
 val right : t -> float
 val bottom : t -> float
+val area : float -> float -> float -> float -> t
 val copy_area : t -> t
 val pp_area : t -> unit
 val intersect_areas : t -> t -> t

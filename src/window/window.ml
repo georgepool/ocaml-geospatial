@@ -6,6 +6,7 @@ let xoffset window = window.xoffset
 let yoffset window = window.yoffset
 let xsize window = window.xsize
 let ysize window = window.ysize
+let window xoffset yoffset xsize ysize = { xoffset; yoffset; xsize; ysize }
 
 let copy_window window =
   {

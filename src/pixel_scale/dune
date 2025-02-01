@@ -1,0 +1,3 @@
+(library
+ (name pixel_scale)
+ (libraries eio fmt))

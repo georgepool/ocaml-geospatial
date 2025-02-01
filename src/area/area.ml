@@ -6,6 +6,7 @@ let left t = t.left
 let top t = t.top
 let right t = t.right
 let bottom t = t.bottom
+let area left top right bottom = { left; top; right; bottom }
 
 let copy_area area =
   { left = area.left; top = area.top; right = area.right; bottom = area.bottom }
