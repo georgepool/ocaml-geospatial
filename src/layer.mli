@@ -26,6 +26,7 @@ module UInt8Layer : sig
     (int, int8_unsigned_elt) t -> (int, int8_unsigned_elt) t
 
   val find_intersection : (int, int8_unsigned_elt) t list -> Area.t
+  val find_union : (int, int8_unsigned_elt) t list -> Area.t
 end
 
 module FloatLayer : sig
@@ -45,6 +46,7 @@ module FloatLayer : sig
   val update_layer_from_area : (float, float32_elt) t -> Area.t -> unit
   val empty_layer_like : (float, float32_elt) t -> (float, float32_elt) t
   val find_intersection : (float, float32_elt) t list -> Area.t
+  val find_union : (float, float32_elt) t list -> Area.t
 end
 
 module UInt8OperationLayer : sig

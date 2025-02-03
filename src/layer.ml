@@ -111,9 +111,9 @@ module BaseLayer = struct
     let yoffset = int_of_float yoffset_float in
     let xsize = int_of_float xsize_float in
     let ysize = int_of_float ysize_float in
-    let new_window = Window.window xoffset yoffset xsize ysize in 
+    let new_window = Window.window xoffset yoffset xsize ysize in
     layer.active_area <- area;
-    layer.window <- new_window;;
+    layer.window <- new_window
 
   let empty_layer_like layer =
     let width = width layer in
@@ -137,13 +137,23 @@ module BaseLayer = struct
 
   let rec map f xs = match xs with [] -> [] | x :: xs -> f x :: map f xs
 
-  let find_intersection layer_list =
+  let pixel_scales_of_layers_are_equal_enough layer_list =
     let pixel_scale_list = map pixel_scale layer_list in
-    if not (Pixel_scale.are_pixel_scales_equal_enough pixel_scale_list) then
+    Pixel_scale.are_pixel_scales_equal_enough pixel_scale_list
+
+  let find_intersection layer_list =
+    if not (pixel_scales_of_layers_are_equal_enough layer_list) then
       raise Pixel_scale.PixelScalesNotEqualEnough
     else
       let area_list = map active_area layer_list in
       Area.find_intersection_areas area_list
+
+  let find_union layer_list =
+    if not (pixel_scales_of_layers_are_equal_enough layer_list) then
+      raise Pixel_scale.PixelScalesNotEqualEnough
+    else
+      let area_list = map active_area layer_list in
+      Area.find_union_areas area_list
 
   let read_tiff_layer_data file_name tiff window tiff_data_type =
     Eio_main.run @@ fun env ->

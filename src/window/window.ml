@@ -21,5 +21,4 @@ let pp_window window =
     window.xoffset window.yoffset window.xsize window.ysize
 
 let windows_are_equal_size window1 window2 =
-  window1.xsize = window2.xsize
-  && window1.ysize = window2.ysize
+  window1.xsize = window2.xsize && window1.ysize = window2.ysize

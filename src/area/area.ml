@@ -1,4 +1,5 @@
 exception IntersectionDoesNotExist of string
+exception UnionDoesNotExist of string
 
 type t = { left : float; top : float; right : float; bottom : float }
 
@@ -15,7 +16,8 @@ let pp_area area =
   Eio.traceln "Area: left: %f top: %f right: %f bottom: %f" area.left area.top
     area.right area.bottom
 
-let intersect_areas a1 a2 = (*wrong in some way!!!*)
+let intersect_areas a1 a2 =
+  (*wrong in some way!!!*)
   let left = max a1.left a2.left in
   let top = min a1.top a2.top in
   let right = min a1.right a2.right in
@@ -33,3 +35,23 @@ let find_intersection_areas area_list =
   match area_list with
   | [] -> raise (IntersectionDoesNotExist "No intersection of list of 0 areas")
   | w :: ws -> find_intersection_areas_helper ws w
+
+let union_areas a1 a2 =
+  (*wrong in some way!!!*)
+  let left = min a1.left a2.left in
+  let top = max a1.top a2.top in
+  let right = max a1.right a2.right in
+  let bottom = min a1.bottom a2.bottom in
+  if left > right || top < bottom then
+    raise (UnionDoesNotExist "There is no union here")
+  else { left; top; right; bottom }
+
+let rec find_union_areas_helper area_list area_acc =
+  match area_list with
+  | [] -> area_acc
+  | w :: ws -> find_union_areas_helper ws (union_areas area_acc w)
+
+let find_union_areas area_list =
+  match area_list with
+  | [] -> raise (UnionDoesNotExist "No union of list of 0 areas")
+  | w :: ws -> find_union_areas_helper ws w
