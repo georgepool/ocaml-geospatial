@@ -11,7 +11,8 @@ module BaseLayer = struct
     height : int;
     mutable data : ('a, 'b) Tiff.Data.tiff_data option;
     underlying_area : Area.t;
-    (*mutable*) active_area : Area.t;
+    mutable active_area : Area.t;
+    (* active_area: Area.t; *)
     mutable window : Window.t;
     pixel_scale : Pixel_scale.t;
     tiff_info : tiff_info option;
@@ -30,6 +31,8 @@ module BaseLayer = struct
   let pixel_scale layer = layer.pixel_scale
 
   let pp_layer layer =
+    Eio.traceln "------------------";
+    Eio.traceln "Pretty-printing this layer!";
     Eio.traceln "Width: %i Height: %i" layer.width layer.height;
     Eio.traceln "Underlying area:";
     Area.pp_area layer.underlying_area;
@@ -75,7 +78,7 @@ module BaseLayer = struct
     let new_window = Window.window xoffset yoffset xsize ysize in
     layer.window <- new_window
 
-  let set_window_from_area layer area =
+  let update_layer_from_area layer area =
     let underlying_area = layer.underlying_area in
     let pixel_scale = layer.pixel_scale in
     let area_left = Area.left area in
@@ -108,7 +111,9 @@ module BaseLayer = struct
     let yoffset = int_of_float yoffset_float in
     let xsize = int_of_float xsize_float in
     let ysize = int_of_float ysize_float in
-    Window.window xoffset yoffset xsize ysize
+    let new_window = Window.window xoffset yoffset xsize ysize in 
+    layer.active_area <- area;
+    layer.window <- new_window;;
 
   let empty_layer_like layer =
     let width = width layer in
@@ -232,24 +237,24 @@ module BaseOperationLayer = struct
     | SingleLayer layer -> layer
     | LayerOperation (l, _) -> dfs_layer l
 
-  let layer_operation_windows_are_equal lhs rhs =
+  let layer_operation_windows_are_equal_size lhs rhs =
     (* assume windows within lhs and rhs are all equal*)
     let lhs_window = BaseLayer.window (dfs_layer lhs) in
     let rhs_window = BaseLayer.window (dfs_layer rhs) in
-    Window.windows_are_equal lhs_window rhs_window
+    Window.windows_are_equal_size lhs_window rhs_window
 
   let mul lhs x = LayerOperation (lhs, MUL_SCALAR x)
   let add lhs x = LayerOperation (lhs, ADD_SCALAR x)
 
   let mul_layer lhs rhs =
     (* assume windows within lhs and rhs are all equal *)
-    if layer_operation_windows_are_equal lhs rhs then
+    if layer_operation_windows_are_equal_size lhs rhs then
       LayerOperation (lhs, MUL_LAYER rhs)
     else raise Window.WindowsAreNotSameSize
 
   let add_layer lhs rhs =
     (* assume windows within lhs and rhs are all equal *)
-    if layer_operation_windows_are_equal lhs rhs then
+    if layer_operation_windows_are_equal_size lhs rhs then
       LayerOperation (lhs, ADD_LAYER rhs)
     else raise Window.WindowsAreNotSameSize
 end

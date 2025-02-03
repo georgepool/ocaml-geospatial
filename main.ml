@@ -57,12 +57,10 @@ let () =
 
   let intersection_area = UInt8Layer.find_intersection [ layer; empty_layer ] in
 
-  let intersection_window =
-    UInt8Layer.set_window_from_area layer intersection_area
-  in
+  UInt8Layer.update_layer_from_area layer intersection_area;
 
   Area.pp_area intersection_area;
 
-  Window.pp_window intersection_window;
+  UInt8Layer.pp_layer layer;
 
   print_endline "Running application with Layer library!"

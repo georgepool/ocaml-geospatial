@@ -9,4 +9,4 @@ val ysize : t -> int
 val window : int -> int -> int -> int -> t
 val copy_window : t -> t
 val pp_window : t -> unit
-val windows_are_equal : t -> t -> bool
+val windows_are_equal_size : t -> t -> bool

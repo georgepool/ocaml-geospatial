@@ -20,7 +20,7 @@ module UInt8Layer : sig
   val set_window :
     (int, int8_unsigned_elt) t -> int -> int -> int -> int -> unit
 
-  val set_window_from_area : (int, int8_unsigned_elt) t -> Area.t -> Window.t
+  val update_layer_from_area : (int, int8_unsigned_elt) t -> Area.t -> unit
 
   val empty_layer_like :
     (int, int8_unsigned_elt) t -> (int, int8_unsigned_elt) t
@@ -42,7 +42,7 @@ module FloatLayer : sig
   val read_data : (float, float32_elt) t -> unit
   val layer_from_file : string -> (float, float32_elt) t
   val set_window : (float, float32_elt) t -> int -> int -> int -> int -> unit
-  val set_window_from_area : (float, float32_elt) t -> Area.t -> Window.t
+  val update_layer_from_area : (float, float32_elt) t -> Area.t -> unit
   val empty_layer_like : (float, float32_elt) t -> (float, float32_elt) t
   val find_intersection : (float, float32_elt) t list -> Area.t
 end
@@ -92,11 +92,11 @@ module FloatOperationLayer : sig
     | MUL_SCALAR of 'a
 
   and ('a, 'b) t =
-    | SingleLayer of ('a, 'b) UInt8Layer.t
+    | SingleLayer of ('a, 'b) FloatLayer.t
     | LayerOperation of ('a, 'b) t * ('a, 'b) operation
 
   val operation_layer :
-    (float, float32_elt) UInt8Layer.t -> (float, float32_elt) t
+    (float, float32_elt) FloatLayer.t -> (float, float32_elt) t
 
   val eval_layer_operation :
     (float, float32_elt) t -> (float, float32_elt) FloatLayer.t

@@ -15,11 +15,11 @@ let pp_area area =
   Eio.traceln "Area: left: %f top: %f right: %f bottom: %f" area.left area.top
     area.right area.bottom
 
-let intersect_areas a1 a2 =
+let intersect_areas a1 a2 = (*wrong in some way!!!*)
   let left = max a1.left a2.left in
-  let top = max a1.top a2.top in
+  let top = min a1.top a2.top in
   let right = min a1.right a2.right in
-  let bottom = min a1.bottom a2.bottom in
+  let bottom = max a1.bottom a2.bottom in
   if left > right || top < bottom then
     raise (IntersectionDoesNotExist "There is no intersection here")
   else { left; top; right; bottom }

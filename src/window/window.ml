@@ -20,8 +20,6 @@ let pp_window window =
   Eio.traceln "Window: xoffset: %i yoffset: %i xsize: %i ysize: %i"
     window.xoffset window.yoffset window.xsize window.ysize
 
-let windows_are_equal window1 window2 =
-  window1.xoffset = window2.xoffset
-  && window1.yoffset = window2.yoffset
-  && window1.xsize = window2.xsize
+let windows_are_equal_size window1 window2 =
+  window1.xsize = window2.xsize
   && window1.ysize = window2.ysize
