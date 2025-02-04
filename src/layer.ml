@@ -220,6 +220,7 @@ module BaseOperationLayer = struct
     | MUL_LAYER of ('a, 'b) t
     | ADD_SCALAR of 'a
     | MUL_SCALAR of 'a
+    | MAP of ('a -> 'a)
 
   and ('a, 'b) t =
     | SingleLayer of ('a, 'b) BaseLayer.t
@@ -241,6 +242,7 @@ module BaseOperationLayer = struct
 
   let add_layer_data_scalar lhs x = Owl.Dense.Ndarray.Generic.add_scalar lhs x
   let mul_layer_data_scalar lhs x = Owl.Dense.Ndarray.Generic.mul_scalar lhs x
+  let map_layer_data lhs f = Owl.Dense.Ndarray.Generic.map f lhs
 
   let rec dfs_layer layer_operation =
     match layer_operation with
@@ -248,7 +250,7 @@ module BaseOperationLayer = struct
     | LayerOperation (l, _) -> dfs_layer l
 
   let layer_operation_windows_are_equal_size lhs rhs =
-    (* assume windows within lhs and rhs are all equal*)
+    (* assume windows within lhs and rhs are all of equal size*)
     let lhs_window = BaseLayer.window (dfs_layer lhs) in
     let rhs_window = BaseLayer.window (dfs_layer rhs) in
     Window.windows_are_equal_size lhs_window rhs_window
@@ -257,16 +259,18 @@ module BaseOperationLayer = struct
   let add lhs x = LayerOperation (lhs, ADD_SCALAR x)
 
   let mul_layer lhs rhs =
-    (* assume windows within lhs and rhs are all equal *)
+    (* assume windows within lhs and rhs are all of equal size *)
     if layer_operation_windows_are_equal_size lhs rhs then
       LayerOperation (lhs, MUL_LAYER rhs)
     else raise Window.WindowsAreNotSameSize
 
   let add_layer lhs rhs =
-    (* assume windows within lhs and rhs are all equal *)
+    (* assume windows within lhs and rhs are all of equal size *)
     if layer_operation_windows_are_equal_size lhs rhs then
       LayerOperation (lhs, ADD_LAYER rhs)
     else raise Window.WindowsAreNotSameSize
+
+  let map lhs f = LayerOperation (lhs, MAP f)
 end
 
 module UInt8OperationLayer = struct
@@ -293,7 +297,8 @@ module UInt8OperationLayer = struct
             let right_data = eval_layer_operation_data r in
             mul_layer_data left_data right_data
         | ADD_SCALAR x -> add_layer_data_scalar left_data x
-        | MUL_SCALAR x -> mul_layer_data_scalar left_data x)
+        | MUL_SCALAR x -> mul_layer_data_scalar left_data x
+        | MAP f -> map_layer_data left_data f)
 
   let eval_layer_operation layer_operation =
     let result_layer =
@@ -306,6 +311,10 @@ module UInt8OperationLayer = struct
   let sum_layer layer_operation =
     let res = eval_layer_operation_data layer_operation in
     Owl.Dense.Ndarray.Generic.sum' res
+
+  let binary_filter lhs f =
+    let g x = if f x then 1 else 0 in
+    LayerOperation (lhs, MAP g)
 end
 
 module FloatOperationLayer = struct
@@ -332,7 +341,8 @@ module FloatOperationLayer = struct
             let right_data = eval_layer_operation_data r in
             mul_layer_data left_data right_data
         | ADD_SCALAR x -> add_layer_data_scalar left_data x
-        | MUL_SCALAR x -> mul_layer_data_scalar left_data x)
+        | MUL_SCALAR x -> mul_layer_data_scalar left_data x
+        | MAP f -> map_layer_data left_data f)
 
   let eval_layer_operation layer_operation =
     let result_layer =
@@ -345,4 +355,8 @@ module FloatOperationLayer = struct
   let sum_layer layer_operation =
     let res = eval_layer_operation_data layer_operation in
     Owl.Dense.Ndarray.Generic.sum' res
+
+  let binary_filter lhs f =
+    let g x = if f x then 1.0 else 0.0 in
+    LayerOperation (lhs, MAP g)
 end

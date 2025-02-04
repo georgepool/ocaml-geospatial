@@ -57,6 +57,7 @@ module UInt8OperationLayer : sig
     | MUL_LAYER of ('a, 'b) t
     | ADD_SCALAR of 'a
     | MUL_SCALAR of 'a
+    | MAP of ('a -> 'a)
 
   and ('a, 'b) t =
     | SingleLayer of ('a, 'b) UInt8Layer.t
@@ -81,7 +82,13 @@ module UInt8OperationLayer : sig
     (int, int8_unsigned_elt) t ->
     (int, int8_unsigned_elt) t
 
+  val map :
+    (int, int8_unsigned_elt) t -> (int -> int) -> (int, int8_unsigned_elt) t
+
   val sum_layer : (int, int8_unsigned_elt) t -> int
+
+  val binary_filter :
+    (int, int8_unsigned_elt) t -> (int -> bool) -> (int, int8_unsigned_elt) t
 end
 
 module FloatOperationLayer : sig
@@ -92,6 +99,7 @@ module FloatOperationLayer : sig
     | MUL_LAYER of ('a, 'b) t
     | ADD_SCALAR of 'a
     | MUL_SCALAR of 'a
+    | MAP of ('a -> 'a)
 
   and ('a, 'b) t =
     | SingleLayer of ('a, 'b) FloatLayer.t
@@ -112,5 +120,9 @@ module FloatOperationLayer : sig
   val add_layer :
     (float, float32_elt) t -> (float, float32_elt) t -> (float, float32_elt) t
 
+  val map : (float, float32_elt) t -> (float -> float) -> (float, float32_elt) t
   val sum_layer : (float, float32_elt) t -> float
+
+  val binary_filter :
+    (float, float32_elt) t -> (float -> bool) -> (float, float32_elt) t
 end
