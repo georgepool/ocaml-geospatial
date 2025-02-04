@@ -89,6 +89,12 @@ module UInt8OperationLayer : sig
 
   val binary_filter :
     (int, int8_unsigned_elt) t -> (int -> bool) -> (int, int8_unsigned_elt) t
+
+  val layer_values_in_list :
+    (int, int8_unsigned_elt) t -> int list -> (int, int8_unsigned_elt) t
+
+  val layer_values_in_range :
+    (int, int8_unsigned_elt) t -> int -> int -> (int, int8_unsigned_elt) t
 end
 
 module FloatOperationLayer : sig
@@ -125,4 +131,10 @@ module FloatOperationLayer : sig
 
   val binary_filter :
     (float, float32_elt) t -> (float -> bool) -> (float, float32_elt) t
+
+  val layer_values_in_list :
+    (float, float32_elt) t -> float list -> (float, float32_elt) t
+
+  val layer_values_in_range :
+    (float, float32_elt) t -> float -> float -> (float, float32_elt) t
 end

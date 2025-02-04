@@ -313,8 +313,20 @@ module UInt8OperationLayer = struct
     Owl.Dense.Ndarray.Generic.sum' res
 
   let binary_filter lhs f =
+    (* returns binary masked layer *)
     let g x = if f x then 1 else 0 in
     LayerOperation (lhs, MAP g)
+
+  let layer_values_in_list lhs list_of_values =
+    (* returns binary masked layer *)
+    let f x = List.mem x list_of_values in
+    binary_filter lhs f
+
+  let layer_values_in_range lhs min max =
+    (* returns binary masked layer *)
+    (* inclusive of min and max *)
+    let f x = x >= min && x <= max in
+    binary_filter lhs f
 end
 
 module FloatOperationLayer = struct
@@ -357,6 +369,18 @@ module FloatOperationLayer = struct
     Owl.Dense.Ndarray.Generic.sum' res
 
   let binary_filter lhs f =
+    (* returns binary masked layer *)
     let g x = if f x then 1.0 else 0.0 in
     LayerOperation (lhs, MAP g)
+
+  let layer_values_in_list lhs list_of_values =
+    (* returns binary masked layer *)
+    let f x = List.mem x list_of_values in
+    binary_filter lhs f
+
+  let layer_values_in_range lhs min max =
+    (* returns binary masked layer *)
+    (* inclusive of min and max *)
+    let f x = x >= min && x <= max in
+    binary_filter lhs f
 end
