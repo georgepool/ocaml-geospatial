@@ -11,8 +11,6 @@ type header = { kind : kind; byte_order : endianness; offset : Optint.Int63.t }
 and kind = Tiff | Bigtiff
 and endianness = Big | Little
 
-exception OffsetsBytecountsDifferentLengthsError of string
-
 module Endian = struct
   let uint16 ?(offset = 0) endian buf =
     match endian with
@@ -693,6 +691,17 @@ module Ifd = struct
     let data_bytecounts = get_bytecounts endian entries reader in
     { entries; data_offsets; data_bytecounts; ro = reader; header }
 end
+  
+type t = { header : header; ifd : Ifd.t }
+let ifd t = t.ifd
+
+let from_file (f : File.ro) =
+  let header = header f in
+  let ifd = Ifd.v ~file_offset:header.offset header f in
+  { header; ifd }
+
+let endianness t =
+  match t.header.byte_order with Big -> `Big | Little -> `Little
 
 type window = { xoff : int; yoff : int; xsize : int; ysize : int }
 
@@ -704,17 +713,21 @@ module Data = struct
     | UInt8Data of (int, int8_unsigned_elt) tiff_data
     | Float32Data of (float, float32_elt) tiff_data
 
-  exception TiffDataHasWrongType
-
   let ceil a b = (a + b - 1) / b
-  let read_uint8_value buf buf_index i = Cstruct.get_uint8 buf (!buf_index + i)
+  let read_uint8_value buf buf_index i tiff_endianness = 
+    match tiff_endianness with 
+    | _ -> Cstruct.get_uint8 buf (buf_index + i)
 
-  let read_float32_value buf buf_index i =
-    let int_value = Cstruct.LE.get_uint32 buf (!buf_index + (i * 4)) in
+  let read_float32_value buf buf_index i tiff_endianness =
+    let int_value = Endian.uint32 ~offset:(buf_index + (i* 4)) tiff_endianness buf in 
     Int32.float_of_bits int_value
 
-  let read_data ro strip_offsets strip_bytecounts rows_per_strip window arr_type
-      read_value =
+  let read_data t ro window arr_type read_value =
+    let ifd = t.ifd in
+    let strip_offsets = Ifd.data_offsets ifd in
+    let strip_bytecounts = Ifd.data_bytecounts ifd in
+    let rows_per_strip = Ifd.rows_per_strip ifd in
+    let tiff_endianness = t.header.byte_order in
     let strip_offsets_length = List.length strip_offsets in
     if strip_offsets_length = List.length strip_bytecounts then (
       let arr_length = window.xsize * window.ysize in
@@ -733,7 +746,7 @@ module Data = struct
         ro ~file_offset:opt_strip_offset [ buf ];
         for _ = 0 to rows_per_strip - 1 do
           for i = window.xoff to window.xoff + window.xsize - 1 do
-            let value = read_value buf buf_index i in
+            let value = read_value buf !buf_index i tiff_endianness in
             if !index < arr_length then Genarray.set arr [| !index |] value;
             index := !index + 1
           done;
@@ -743,30 +756,17 @@ module Data = struct
       arr)
     else
       raise
-        (OffsetsBytecountsDifferentLengthsError
-           "strip_offsets and strip_bytecounts are of different lengths")
+        (Invalid_argument
+            "strip_offsets and strip_bytecounts are of different lengths")
 
-  let read_data_uint8 ro strip_offsets strip_bytecounts rows_per_strip window =
-    read_data ro strip_offsets strip_bytecounts rows_per_strip window
-      int8_unsigned read_uint8_value
+  let read_data_uint8 t ro window = read_data t ro window int8_unsigned read_uint8_value
 
-  let read_data_float32 ro strip_offsets strip_bytecounts rows_per_strip window
-      =
-    read_data ro strip_offsets strip_bytecounts rows_per_strip window float32
-      read_float32_value
+  let read_data_float32 t ro window = read_data t ro window float32 read_float32_value
 end
 
-type t = { header : header; ifd : Ifd.t }
-
-let ifd t = t.ifd
-
 (* have to specify all 4 or else it defaults to whole file*)
-let data t (f : File.ro) ?(xoffset = None) ?(yoffset = None) ?(xsize = None)
-    ?(ysize = None) data_type =
-  let ifd = t.ifd in
-  let data_offsets = Ifd.data_offsets ifd in
-  let data_bytecounts = Ifd.data_bytecounts ifd in
-  let rows_per_strip = Ifd.rows_per_strip ifd in
+let data t (f : File.ro) ?xoffset ?yoffset ?xsize ?ysize data_type =
+  let ifd = ifd t in
   let window =
     match (xoffset, yoffset, xsize, ysize) with
     | Some xoffset, Some yoffset, Some xsize, Some ysize ->
@@ -776,26 +776,14 @@ let data t (f : File.ro) ?(xoffset = None) ?(yoffset = None) ?(xsize = None)
         let height = Ifd.height ifd in
         { xoff = 0; yoff = 0; xsize = width; ysize = height }
   in
-  (* Eio.traceln "xoff: %i yoff: %i xsize: %i ysize: %i" window.xoff window.yoff window.xsize window.ysize; *)
-  (* reads whole tiff file into memory every time... *)
   match data_type with
   | Data.UINT8 ->
       let data_arr =
-        Data.read_data_uint8 f data_offsets data_bytecounts rows_per_strip
-          window
+        Data.read_data_uint8 t f window
       in
       Data.UInt8Data data_arr
   | Data.FLOAT32 ->
       let data_arr =
-        Data.read_data_float32 f data_offsets data_bytecounts rows_per_strip
-          window
+        Data.read_data_float32 t f window
       in
       Data.Float32Data data_arr
-
-let from_file (f : File.ro) =
-  let header = header f in
-  let ifd = Ifd.v ~file_offset:header.offset header f in
-  { header; ifd }
-
-let endianness t =
-  match t.header.byte_order with Big -> `Big | Little -> `Little

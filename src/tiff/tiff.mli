@@ -8,8 +8,8 @@ open Bigarray
 module File : sig
   type ro = file_offset:Optint.Int63.t -> Cstruct.t list -> unit
   (** Read-only access to a file that supports reading at a particular offset.
-          The read should be exact and raise [End_of_file] should that be the case.
-      *)
+      The read should be exact and raise [End_of_file] should that be the case.
+  *)
 end
 
 module Ifd : sig
@@ -90,8 +90,8 @@ module Ifd : sig
 
   val bits_per_sample : t -> int list
   (** [bits_per_sample t] is the number of bits per component corresponding to a
-          pixel. The following invariant should hold
-          [List.length (bits_per_sample t) = sample_per_pixel t]. *)
+      pixel. The following invariant should hold
+      [List.length (bits_per_sample t) = sample_per_pixel t]. *)
 
   val compression : t -> compression
   (** Compression scheme used in the image data *)
@@ -124,7 +124,7 @@ module Ifd : sig
 
   val tiepoint : t -> float array
   (** Also known as GeoreferenceTag, this stores raster to model tiepoint pairs.
-      *)
+  *)
 
   val geo_double_params : t -> float array
   (** Double valued GeoKeys. *)
@@ -164,7 +164,7 @@ module Ifd : sig
 
   val geo_key_directory : t -> GeoKeys.t
   (** This tag may be used to store the GeoKey Directory, which defines and
-          references the "GeoKeys" *)
+      references the "GeoKeys" *)
 
   val data_offsets : t -> int list
   (** The offsets into the file for the chunks of the data. *)
@@ -180,13 +180,13 @@ module Ifd : sig
 
   val read_entry : entry -> int
   (** Reads the value of the entry as a short if the entry field matches
-          otherwise it will raise [Invalid_argument _]. *)
+      otherwise it will raise [Invalid_argument _]. *)
 
   val read_entry_raw : ?count:int -> entry -> File.ro -> Cstruct.t list
   (** Read entries as raw bytes. This will return a buffer list based on the
-          layout of the entry. For example, if the count is [10] and the tag is
-          [Double] then you will gexwt back a list of [10] buffers each of length
-          [2]. *)
+      layout of the entry. For example, if the count is [10] and the tag is
+      [Double] then you will gexwt back a list of [10] buffers each of length
+      [2]. *)
 end
 
 type window = { xoff : int; yoff : int; xsize : int; ysize : int }
@@ -198,8 +198,6 @@ module Data : sig
   type t =
     | UInt8Data of (int, int8_unsigned_elt) tiff_data
     | Float32Data of (float, float32_elt) tiff_data
-
-  exception TiffDataHasWrongType
 end
 
 type t
@@ -211,10 +209,10 @@ val ifd : t -> Ifd.t
 val data :
   t ->
   File.ro ->
-  ?xoffset:int option ->
-  ?yoffset:int option ->
-  ?xsize:int option ->
-  ?ysize:int option ->
+  ?xoffset:int ->
+  ?yoffset:int ->
+  ?xsize:int ->
+  ?ysize:int ->
   Data.data_type ->
   Data.t
 

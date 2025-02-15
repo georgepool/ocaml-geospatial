@@ -95,6 +95,7 @@ module UInt8OperationLayer : sig
 
   val layer_values_in_range :
     (int, int8_unsigned_elt) t -> int -> int -> (int, int8_unsigned_elt) t
+
 end
 
 module FloatOperationLayer : sig
@@ -137,4 +138,5 @@ module FloatOperationLayer : sig
 
   val layer_values_in_range :
     (float, float32_elt) t -> float -> float -> (float, float32_elt) t
+
 end

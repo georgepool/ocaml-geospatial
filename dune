@@ -6,6 +6,11 @@
  (name main_float)
  (libraries eio_main area window bigarray cstruct layer))
 
+ 
+(executable
+ (name main_aoh)
+ (libraries eio_main area window bigarray cstruct layer))
+
 (executable
  (name main_tiff)
  (libraries eio_main owl tiff))

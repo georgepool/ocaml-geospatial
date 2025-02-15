@@ -163,8 +163,8 @@ module BaseLayer = struct
     let yoffset = Window.yoffset window in
     let xsize = Window.xsize window in
     let ysize = Window.ysize window in
-    Tiff.data tiff (File.pread_exact r) ~xoffset:(Some xoffset)
-      ~yoffset:(Some yoffset) ~xsize:(Some xsize) ~ysize:(Some ysize)
+    Tiff.data tiff (File.pread_exact r) ~xoffset:(xoffset)
+      ~yoffset:(yoffset) ~xsize:(xsize) ~ysize:(ysize)
       tiff_data_type
 end
 
@@ -182,7 +182,7 @@ module FloatLayer = struct
         in
         match data_wrapper with
         | Float32Data arr -> layer.data <- Some arr
-        | _ -> raise Tiff.Data.TiffDataHasWrongType)
+        | _ -> raise (Invalid_argument "Tiff Data has wrong type"))
     | None ->
         (* return a genarray full of zeroes with correct dimensions*)
         let arr_length = Window.xsize window * Window.ysize window in
@@ -204,7 +204,7 @@ module UInt8Layer = struct
         in
         match data_wrapper with
         | UInt8Data arr -> layer.data <- Some arr
-        | _ -> raise Tiff.Data.TiffDataHasWrongType)
+        | _ -> raise (Invalid_argument "Tiff Data has wrong type"))
     | None ->
         (* return a genarray full of zeroes with correct dimensions*)
         let arr_length = Window.xsize window * Window.ysize window in
@@ -327,6 +327,7 @@ module UInt8OperationLayer = struct
     (* inclusive of min and max *)
     let f x = x >= min && x <= max in
     binary_filter lhs f
+
 end
 
 module FloatOperationLayer = struct
@@ -383,4 +384,5 @@ module FloatOperationLayer = struct
     (* inclusive of min and max *)
     let f x = x >= min && x <= max in
     binary_filter lhs f
+  
 end
