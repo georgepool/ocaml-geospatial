@@ -9,7 +9,7 @@ module UInt8Layer : sig
   val underlying_area : (int, int8_unsigned_elt) t -> Area.t
 
   val data :
-    (int, int8_unsigned_elt) t -> (int, int8_unsigned_elt) Tiff.Data.tiff_data
+    (int, int8_unsigned_elt) t -> (int, int8_unsigned_elt) Tiff.Data.t
 
   val window : (int, int8_unsigned_elt) t -> Window.t
   val pixel_scale : (int, int8_unsigned_elt) t -> Pixel_scale.t
@@ -39,7 +39,7 @@ module FloatLayer : sig
   val window : (float, float32_elt) t -> Window.t
   val pixel_scale : (float, float32_elt) t -> Pixel_scale.t
   val pp_layer : (float, float32_elt) t -> unit
-  val data : ('a, 'b) t -> ('a, 'b) Tiff.Data.tiff_data
+  val data : ('a, 'b) t -> ('a, 'b) Tiff.Data.t
   val read_data : (float, float32_elt) t -> unit
   val layer_from_file : string -> (float, float32_elt) t
   val set_window : (float, float32_elt) t -> int -> int -> int -> int -> unit

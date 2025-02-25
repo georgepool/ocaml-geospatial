@@ -9,7 +9,7 @@ module BaseLayer = struct
   type ('a, 'b) t = {
     width : int;
     height : int;
-    mutable data : ('a, 'b) Tiff.Data.tiff_data option;
+    mutable data : ('a, 'b) Tiff.Data.t option;
     underlying_area : Area.t;
     mutable active_area : Area.t;
     (* active_area: Area.t; *)
@@ -163,9 +163,10 @@ module BaseLayer = struct
     let yoffset = Window.yoffset window in
     let xsize = Window.xsize window in
     let ysize = Window.ysize window in
-    Tiff.data tiff (File.pread_exact r) ~xoffset:(xoffset)
-      ~yoffset:(yoffset) ~xsize:(xsize) ~ysize:(ysize)
-      tiff_data_type
+
+    let tiff_window = {Tiff.xoff=xoffset; Tiff.yoff=yoffset; Tiff.xsize=xsize; Tiff.ysize=ysize} in
+
+    Tiff.data tiff (File.pread_exact r) ~window:tiff_window tiff_data_type
 end
 
 module FloatLayer = struct
@@ -177,12 +178,10 @@ module FloatLayer = struct
     | Some tiff_info -> (
         let file_name = tiff_info.file_name in
         let tiff = tiff_info.tiff in
-        let data_wrapper =
-          read_tiff_layer_data file_name tiff window Tiff.Data.FLOAT32
+        let data =
+          read_tiff_layer_data file_name tiff window Tiff.Data.Float32
         in
-        match data_wrapper with
-        | Float32Data arr -> layer.data <- Some arr
-        | _ -> raise (Invalid_argument "Tiff Data has wrong type"))
+        layer.data <- Some data)
     | None ->
         (* return a genarray full of zeroes with correct dimensions*)
         let arr_length = Window.xsize window * Window.ysize window in
@@ -199,12 +198,10 @@ module UInt8Layer = struct
     | Some tiff_info -> (
         let file_name = tiff_info.file_name in
         let tiff = tiff_info.tiff in
-        let data_wrapper =
-          read_tiff_layer_data file_name tiff window Tiff.Data.UINT8
+        let data =
+          read_tiff_layer_data file_name tiff window Tiff.Data.Uint8
         in
-        match data_wrapper with
-        | UInt8Data arr -> layer.data <- Some arr
-        | _ -> raise (Invalid_argument "Tiff Data has wrong type"))
+        layer.data <- Some data)
     | None ->
         (* return a genarray full of zeroes with correct dimensions*)
         let arr_length = Window.xsize window * Window.ysize window in
