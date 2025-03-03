@@ -1,10 +1,10 @@
 open Layer
 
 let () =
-  let jung_layer = FloatLayer.layer_from_file "test/jung_uncompressed.tif" in
-  let elevation_layer = FloatLayer.layer_from_file "test/elevation-float_uncompressed.tif" in
-  let raster_layer = FloatLayer.layer_from_file "test/9997_RESIDENT_uncompressed.tif" in
-  let area_per_pixel_layer = FloatLayer.layer_from_file "test/fullarea_uncompressed.tif" in
+  let jung_layer = FloatLayer.layer_from_file "tests/files/jung_uncompressed.tif" in
+  let elevation_layer = FloatLayer.layer_from_file "tests/files/elevation-float_uncompressed.tif" in
+  let raster_layer = FloatLayer.layer_from_file "tests/files/9997_RESIDENT_uncompressed.tif" in
+  let area_per_pixel_layer = FloatLayer.layer_from_file "tests/files/fullarea_uncompressed.tif" in
   let intersection_area = FloatLayer.find_intersection [jung_layer; elevation_layer; raster_layer; area_per_pixel_layer] in 
   FloatLayer.update_layer_from_area jung_layer intersection_area;
   FloatLayer.update_layer_from_area elevation_layer intersection_area;

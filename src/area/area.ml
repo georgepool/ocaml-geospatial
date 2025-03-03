@@ -37,14 +37,11 @@ let find_intersection_areas area_list =
   | w :: ws -> find_intersection_areas_helper ws w
 
 let union_areas a1 a2 =
-  (*wrong in some way!!!*)
   let left = min a1.left a2.left in
   let top = max a1.top a2.top in
   let right = max a1.right a2.right in
   let bottom = min a1.bottom a2.bottom in
-  if left > right || top < bottom then
-    raise (UnionDoesNotExist "There is no union here")
-  else { left; top; right; bottom }
+  { left; top; right; bottom }
 
 let rec find_union_areas_helper area_list area_acc =
   match area_list with

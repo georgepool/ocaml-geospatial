@@ -1,13 +1,13 @@
 open Layer
 
 let () =
-  let layer1 = FloatLayer.layer_from_file "test/jung_uncompressed.tif" in
+  let layer1 = FloatLayer.layer_from_file "tests/files/jung_uncompressed.tif" in
   FloatLayer.pp_layer layer1;
 
   (* Eio.traceln "Jung underlying_area:";
      Area.pp_area (FloatLayer.underlying_area layer1); *)
   let layer2 =
-    FloatLayer.layer_from_file "test/elevation-float_uncompressed.tif"
+    FloatLayer.layer_from_file "tests/files/elevation-float_uncompressed.tif"
   in
   FloatLayer.pp_layer layer2;
 

@@ -1,0 +1,19 @@
+(test
+ (name test_uint8)
+ (libraries alcotest layer)
+  (deps
+  (file files/cea.tiff)
+  (file files/uniform.tiff)
+
+  )
+)
+
+(test
+ (name test_window)
+ (libraries alcotest window)
+)
+
+(test
+ (name test_area)
+ (libraries alcotest area)
+)

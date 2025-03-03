@@ -1,7 +1,8 @@
 open Layer
 
 let () =
-  let layer = UInt8Layer.layer_from_file "test/cea.tiff" in
+  let layer = UInt8Layer.layer_from_file "tests/files/uniform.tiff" in
+  Eio.traceln "loaded in";
   UInt8Layer.pp_layer layer;
   (* UInt8BaseLayer.set_window layer 0 0 5 5; *)
   let layer_total =
