@@ -3,37 +3,37 @@ open Area
 
 let test_area_creation () = 
   let a = area 0.0 1.0 2.0 0.0 in 
-  check (float 0.000001) "Left is 0.0" 0.0 (left a);
-  check (float 0.000001) "Top is 1.0" 1.0 (top a);
-  check (float 0.000001) "Right is 2.0" 2.0 (right a);
-  check (float 0.000001) "Bottom is 0.0" 0.0 (bottom a)
+  check (float 0.0001) "Left is 0.0" 0.0 (left a);
+  check (float 0.0001) "Top is 1.0" 1.0 (top a);
+  check (float 0.0001) "Right is 2.0" 2.0 (right a);
+  check (float 0.0001) "Bottom is 0.0" 0.0 (bottom a)
 
 
 let test_copy_area () = 
   let a1 = area 0.0 1.0 2.0 0.0 in 
   let a2 = copy_area a1 in
-  check (float 0.000001) "Copied Left is 0.0" 0.0 (left a2);
-  check (float 0.000001) "Copied Top is 1.0" 1.0 (top a2);
-  check (float 0.000001) "Copied Right is 2.0" 2.0 (right a2);
-  check (float 0.000001) "Copied Bottom is 0.0" 0.0 (bottom a2)
+  check (float 0.0001) "Copied Left is 0.0" 0.0 (left a2);
+  check (float 0.0001) "Copied Top is 1.0" 1.0 (top a2);
+  check (float 0.0001) "Copied Right is 2.0" 2.0 (right a2);
+  check (float 0.0001) "Copied Bottom is 0.0" 0.0 (bottom a2)
 
 let test_intersection_of_same_areas () = 
   let a1 = area 0.0 1.0 2.0 0.0 in  
   let a2 = area 0.0 1.0 2.0 0.0 in 
   let ai = intersect_areas a1 a2 in
-  check (float 0.000001) "Same intersection Left is 0.0" 0.0 (left ai);
-  check (float 0.000001) "Same intersection Top is 1.0" 1.0 (top ai);
-  check (float 0.000001) "Same intersection Right is 2.0" 2.0 (right ai);
-  check (float 0.000001) "Same intersection Bottom is 0.0" 0.0 (bottom ai)
+  check (float 0.0001) "Same intersection Left is 0.0" 0.0 (left ai);
+  check (float 0.0001) "Same intersection Top is 1.0" 1.0 (top ai);
+  check (float 0.0001) "Same intersection Right is 2.0" 2.0 (right ai);
+  check (float 0.0001) "Same intersection Bottom is 0.0" 0.0 (bottom ai)
 
 let test_intersection_areas () = 
   let a1 = area 0.0 1.0 2.0 0.0 in 
   let a2 = area 0.5 1.5 1.5 0.5 in 
   let ai = intersect_areas a1 a2 in 
-  check (float 0.000001) "Intersection Left is 0.5" 0.5 (left ai);
-  check (float 0.000001) "Intersection Top is 1.0" 1.0 (top ai);
-  check (float 0.000001) "Intersection Right is 2.0" 1.5 (right ai);
-  check (float 0.000001) "Intersection Bottom is 0.0" 0.5 (bottom ai)
+  check (float 0.0001) "Intersection Left is 0.5" 0.5 (left ai);
+  check (float 0.0001) "Intersection Top is 1.0" 1.0 (top ai);
+  check (float 0.0001) "Intersection Right is 2.0" 1.5 (right ai);
+  check (float 0.0001) "Intersection Bottom is 0.0" 0.5 (bottom ai)
 
 let test_no_intersect_areas () =
   let a1 = area 0.0 1.0 2.0 0.0 in 

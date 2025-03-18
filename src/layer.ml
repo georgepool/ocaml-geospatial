@@ -18,6 +18,12 @@ module BaseLayer = struct
     tiff_info : tiff_info option;
   }
 
+  let reset_layer layer = 
+    layer.data <- None;
+    layer.active_area <- layer.underlying_area;
+    layer.window <- Window.window 0 0 layer.width (1 * layer.height);
+    ()
+
   let width layer = layer.width
   let height layer = layer.height
 
@@ -145,14 +151,14 @@ module BaseLayer = struct
     if not (pixel_scales_of_layers_are_equal_enough layer_list) then
       raise Pixel_scale.PixelScalesNotEqualEnough
     else
-      let area_list = map active_area layer_list in
+      let area_list = map underlying_area layer_list in
       Area.find_intersection_areas area_list
 
   let find_union layer_list =
     if not (pixel_scales_of_layers_are_equal_enough layer_list) then
       raise Pixel_scale.PixelScalesNotEqualEnough
     else
-      let area_list = map active_area layer_list in
+      let area_list = map underlying_area layer_list in
       Area.find_union_areas area_list
 
   let read_tiff_layer_data file_name tiff window tiff_data_type =

@@ -14,3 +14,23 @@
 (executable
  (name main_tiff)
  (libraries eio_main owl tiff))
+
+(executable
+ (name aoh_species)
+ (libraries
+   eio_main
+   bechamel
+   csv
+   area
+   window
+   bigarray
+   cstruct
+   core_bench
+   layer
+   yojson))
+
+; (executable
+;  (name try_bechamel)
+;  (libraries
+;    eio_main
+;    core_bench))

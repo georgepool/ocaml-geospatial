@@ -728,6 +728,7 @@ module Data = struct
     match tiff_endianness with _ -> Cstruct.get_uint8 buf (buf_index + i)
 
   let read_float32_value buf buf_index i tiff_endianness =
+    (* Printf.printf "offset %i\n" (buf_index + (i * 4)); *)
     let int_value =
       Endian.uint32 ~offset:(buf_index + (i * 4)) tiff_endianness buf
     in
@@ -735,6 +736,7 @@ module Data = struct
 
   let read_data t ro window arr_type read_value =
     let ifd = t.ifd in
+    let height = Ifd.height ifd in
     let strip_offsets = Ifd.data_offsets ifd in
     let strip_bytecounts = Ifd.data_bytecounts ifd in
     let rows_per_strip = Ifd.rows_per_strip ifd in
@@ -752,10 +754,16 @@ module Data = struct
       for s = first_strip to last_strip - 1 do
         let buf = Cstruct.create strip_bytecounts.(s) in
         let buf_index = ref 0 in
-        let strip_length = strip_bytecounts.(s) / rows_per_strip in
+        let rows_in_strip =
+          if s = strip_offsets_length - 1 then (* checking if its last strip*)
+            height - (s * rows_per_strip)
+          else
+            rows_per_strip
+        in
+        let strip_length = strip_bytecounts.(s) / rows_in_strip in
         let opt_strip_offset = Optint.Int63.of_int strip_offsets.(s) in
         ro ~file_offset:opt_strip_offset [ buf ];
-        for _ = 0 to rows_per_strip - 1 do
+        for _ = 0 to rows_in_strip - 1 do
           for i = window.xoff to window.xoff + window.xsize - 1 do
             let value = read_value buf !buf_index i tiff_endianness in
             if !index < arr_length then Genarray.set arr [| !index |] value;

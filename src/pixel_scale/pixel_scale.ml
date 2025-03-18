@@ -7,7 +7,7 @@ let ystep pixel_scale = pixel_scale.ystep
 let pixel_scale xstep ystep = { xstep; ystep }
 
 (*
-   Credit for rest of this file goes to mdales
+   Credit for rest of this file goes to mdales and his yirgacheffe library
 *)
 
 let minimal_degree_of_interest_metres = 1.0

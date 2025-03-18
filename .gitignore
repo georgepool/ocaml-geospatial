@@ -32,3 +32,6 @@ _opam/
 env
 
 tests/files
+
+try_bechamel.ml
+aoh_species_old.ml

@@ -4,6 +4,8 @@ module UInt8Layer : sig
   type tiff_info
   type ('a, 'b) t
 
+  val reset_layer : (int, int8_unsigned_elt) t -> unit
+
   val width : (int, int8_unsigned_elt) t -> int
   val height : (int, int8_unsigned_elt) t -> int
   val underlying_area : (int, int8_unsigned_elt) t -> Area.t
@@ -32,6 +34,9 @@ end
 module FloatLayer : sig
   type tiff_info
   type ('a, 'b) t
+
+  val reset_layer : (float, float32_elt) t -> unit
+
 
   val width : (float, float32_elt) t -> int
   val height : (float, float32_elt) t -> int
