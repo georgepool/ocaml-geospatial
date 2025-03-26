@@ -33,5 +33,7 @@ env
 
 tests/files
 
+*.csv
+
 try_bechamel.ml
 aoh_species_old.ml
