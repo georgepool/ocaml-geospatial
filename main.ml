@@ -1,7 +1,10 @@
 open Layer
 
 let () =
-  let layer = UInt8Layer.layer_from_file "tests/files/uniform.tiff" in
+  Eio_main.run @@ fun env ->
+    let fs = Eio.Stdenv.fs env in 
+    let path = Eio.Path.(fs / "tests/files/uniform.tiff") in 
+    let layer = UInt8Layer.layer_from_file path in
   Eio.traceln "loaded in";
   UInt8Layer.pp_layer layer;
   (* UInt8BaseLayer.set_window layer 0 0 5 5; *)

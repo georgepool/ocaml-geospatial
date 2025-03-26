@@ -1,33 +1,33 @@
 (executable
  (name main)
- (libraries eio_main area window bigarray cstruct layer))
+ (libraries eio_main eio area window bigarray cstruct layer))
 
-(executable
- (name main_float)
- (libraries eio_main area window bigarray cstruct layer))
+; (executable
+;  (name main_float)
+;  (libraries eio_main area window bigarray cstruct layer))
 
  
-(executable
- (name main_aoh)
- (libraries eio_main area window bigarray cstruct layer))
+; (executable
+;  (name main_aoh)
+;  (libraries eio_main area window bigarray cstruct layer))
 
-(executable
- (name main_tiff)
- (libraries eio_main owl tiff))
+; (executable
+;  (name main_tiff)
+;  (libraries eio_main owl tiff))
 
-(executable
- (name aoh_species)
- (libraries
-   eio_main
-   bechamel
-   csv
-   area
-   window
-   bigarray
-   cstruct
-   core_bench
-   layer
-   yojson))
+; (executable
+;  (name aoh_species)
+;  (libraries
+;    eio_main
+;    bechamel
+;    csv
+;    area
+;    window
+;    bigarray
+;    cstruct
+;    core_bench
+;    layer
+;    yojson))
 
 ; (executable
 ;  (name try_bechamel)

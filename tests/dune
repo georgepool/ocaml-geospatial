@@ -1,6 +1,6 @@
 (test
  (name test_uint8)
- (libraries alcotest layer)
+ (libraries alcotest eio eio_main layer)
   (deps
   (file files/cea.tiff)
   (file files/uniform.tiff)
