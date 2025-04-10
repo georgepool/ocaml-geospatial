@@ -17,7 +17,7 @@ module UInt8Layer : sig
   val pixel_scale : (int, int8_unsigned_elt) t -> Pixel_scale.t
   val pp_layer : (int, int8_unsigned_elt) t -> unit
   val read_data : (int, int8_unsigned_elt) t -> unit
-  val layer_from_file : string -> (int, int8_unsigned_elt) t
+  val layer_from_file : Eio.Fs.dir_ty Eio.Path.t -> (int, int8_unsigned_elt) t
 
   val set_window :
     (int, int8_unsigned_elt) t -> int -> int -> int -> int -> unit
@@ -46,7 +46,7 @@ module FloatLayer : sig
   val pp_layer : (float, float32_elt) t -> unit
   val data : ('a, 'b) t -> ('a, 'b) Tiff.Data.t
   val read_data : (float, float32_elt) t -> unit
-  val layer_from_file : string -> (float, float32_elt) t
+  val layer_from_file : Eio.Fs.dir_ty Eio.Path.t -> (float, float32_elt) t
   val set_window : (float, float32_elt) t -> int -> int -> int -> int -> unit
   val update_layer_from_area : (float, float32_elt) t -> Area.t -> unit
   val empty_layer_like : (float, float32_elt) t -> (float, float32_elt) t

@@ -1,15 +1,18 @@
 open Layer
 
 let () =
-  let layer1 = FloatLayer.layer_from_file "tests/files/jung_uncompressed.tif" in
+   Eio_main.run @@ fun env ->
+   let fs = Eio.Stdenv.fs env in 
+   let path = Eio.Path.(fs / "tests/files/jung_uncompressed.tif") in 
+   let layer1 = FloatLayer.layer_from_file path in
   FloatLayer.pp_layer layer1;
 
   (* Eio.traceln "Jung underlying_area:";
      Area.pp_area (FloatLayer.underlying_area layer1); *)
-  let layer2 =
-    FloatLayer.layer_from_file "tests/files/elevation-float_uncompressed.tif"
-  in
-  FloatLayer.pp_layer layer2;
+   let path = Eio.Path.(fs / "tests/files/jung_uncompressed.tif") in 
+
+   let layer2 = FloatLayer.layer_from_file path in
+   FloatLayer.pp_layer layer2;
 
   (* Eio.traceln "Elevation underlying_area:";
      Area.pp_area (FloatLayer.underlying_area layer2); *)

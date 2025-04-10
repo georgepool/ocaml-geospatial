@@ -4,7 +4,7 @@ open Bigarray
 module BaseLayer = struct
   exception DataNotReadYet
 
-  type tiff_info = { file_name : string; tiff : Tiff.t }
+  type tiff_info = { file_name : Eio.Fs.dir_ty Eio.Path.t; tiff : Tiff.t }
 
   type ('a, 'b) t = {
     width : int;
@@ -48,9 +48,7 @@ module BaseLayer = struct
     Pixel_scale.pp_pixel_scale layer.pixel_scale
 
   let layer_from_file file_name =
-    Eio_main.run @@ fun env ->
-    let fs = Stdenv.fs env in
-    Path.(with_open_in (fs / file_name)) @@ fun r ->
+    Path.(with_open_in file_name) @@ fun r ->
     let tiff = Tiff.from_file (File.pread_exact r) in
     let ifd = Tiff.ifd tiff in
     let width = Tiff.Ifd.width ifd in
@@ -68,7 +66,7 @@ module BaseLayer = struct
     let area = Area.area left top right bottom in
     let window = Window.window 0 0 width (1 * height) in
     let pixel_scale = Pixel_scale.pixel_scale scale_x scale_y in
-    let tiff_info = Some { file_name; tiff } in
+    let tiff_info = Some { file_name = (file_name :> Eio.Fs.dir_ty Eio.Path.t); tiff } in
     {
       width;
       height;
@@ -162,9 +160,7 @@ module BaseLayer = struct
       Area.find_union_areas area_list
 
   let read_tiff_layer_data file_name tiff window tiff_data_type =
-    Eio_main.run @@ fun env ->
-    let fs = Stdenv.fs env in
-    Path.(with_open_in (fs / file_name)) @@ fun r ->
+    Path.(with_open_in file_name) @@ fun r ->
     let xoffset = Window.xoffset window in
     let yoffset = Window.yoffset window in
     let xsize = Window.xsize window in

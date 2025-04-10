@@ -1,13 +1,16 @@
 open Layer
 
 let test_uint8_tiff file_name () = 
-  let layer = UInt8Layer.layer_from_file file_name in
+  Eio_main.run @@ fun env ->
+    let fs = Eio.Stdenv.fs env in 
+    let path = Eio.Path.(fs / file_name) in 
+    let layer = UInt8Layer.layer_from_file path in
 
-  let empty_layer = UInt8Layer.empty_layer_like layer in 
+    let empty_layer = UInt8Layer.empty_layer_like layer in 
 
-  let empty_layer_total = UInt8OperationLayer.sum_layer (UInt8OperationLayer.SingleLayer empty_layer) in
+    let empty_layer_total = UInt8OperationLayer.sum_layer (UInt8OperationLayer.SingleLayer empty_layer) in
 
-  Alcotest.(check int) ("Sum of empty layer for " ^ file_name) 0 empty_layer_total
+    Alcotest.(check int) ("Sum of empty layer for " ^ file_name) 0 empty_layer_total
 
 
 let file_names = [ "files/cea.tiff"; 

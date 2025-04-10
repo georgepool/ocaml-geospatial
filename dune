@@ -29,6 +29,61 @@
    layer
    yojson))
 
+(executable
+ (name aoh_width)
+ (libraries
+   eio_main
+   bechamel
+   csv
+   area
+   window
+   bigarray
+   cstruct
+   core_bench
+   layer
+   yojson))
+
+(executable
+ (name aoh_height)
+ (libraries
+   eio_main
+   bechamel
+   csv
+   area
+   window
+   bigarray
+   cstruct
+   core_bench
+   layer
+   yojson))
+
+(executable
+ (name simple_width)
+ (libraries
+   eio_main
+   bechamel
+   csv
+   area
+   window
+   bigarray
+   cstruct
+   core_bench
+   layer
+   yojson))
+
+(executable
+ (name simple_height)
+ (libraries
+   eio_main
+   bechamel
+   csv
+   area
+   window
+   bigarray
+   cstruct
+   core_bench
+   layer
+   yojson))
 ; (executable
 ;  (name try_bechamel)
 ;  (libraries
