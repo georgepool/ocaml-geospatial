@@ -220,6 +220,7 @@ module BaseOperationLayer = struct
     | ADD_SCALAR of 'a
     | MUL_SCALAR of 'a
     | MAP of ('a -> 'a)
+    | IN_LIST of 'a list
 
   and ('a, 'b) t =
     | SingleLayer of ('a, 'b) BaseLayer.t
@@ -275,6 +276,15 @@ end
 module UInt8OperationLayer = struct
   include BaseOperationLayer
 
+  let in_list_layer_data lhs xs = 
+    let allowed_tbl = 
+      let tbl = Hashtbl.create(List.length xs) in
+      List.iter (fun x -> Hashtbl.replace tbl x ()) xs;
+      tbl
+    in
+    let mask = Owl.Dense.Ndarray.Generic.map (fun x -> if Hashtbl.mem allowed_tbl x then 1 else 0) lhs in
+    mask
+
   let eval_single_layer layer =
     let data = UInt8Layer.get_data layer in
     match data with
@@ -297,7 +307,8 @@ module UInt8OperationLayer = struct
             mul_layer_data left_data right_data
         | ADD_SCALAR x -> add_layer_data_scalar left_data x
         | MUL_SCALAR x -> mul_layer_data_scalar left_data x
-        | MAP f -> map_layer_data left_data f)
+        | MAP f -> map_layer_data left_data f
+        | IN_LIST xs -> in_list_layer_data left_data xs)
 
   let eval_layer_operation layer_operation =
     let result_layer =
@@ -316,10 +327,12 @@ module UInt8OperationLayer = struct
     let g x = if f x then 1 else 0 in
     LayerOperation (lhs, MAP g)
 
-  let layer_values_in_list lhs list_of_values =
+  (* let layer_values_in_list lhs list_of_values =
     (* returns binary masked layer *)
     let f x = List.mem x list_of_values in
-    binary_filter lhs f
+    binary_filter lhs f *)
+
+  let layer_values_in_list lhs list_of_values = LayerOperation(lhs, IN_LIST list_of_values)
 
   let layer_values_in_range lhs min max =
     (* returns binary masked layer *)
@@ -332,6 +345,15 @@ end
 module FloatOperationLayer = struct
   include BaseOperationLayer
 
+  let in_list_layer_data lhs xs = 
+    let allowed_tbl = 
+      let tbl = Hashtbl.create(List.length xs) in
+      List.iter (fun x -> Hashtbl.replace tbl x ()) xs;
+      tbl
+    in
+    let mask = Owl.Dense.Ndarray.Generic.map (fun x -> if Hashtbl.mem allowed_tbl x then 1.0 else 0.0) lhs in
+    mask
+  
   let eval_single_layer layer =
     let data = FloatLayer.get_data layer in
     match data with
@@ -354,7 +376,8 @@ module FloatOperationLayer = struct
             mul_layer_data left_data right_data
         | ADD_SCALAR x -> add_layer_data_scalar left_data x
         | MUL_SCALAR x -> mul_layer_data_scalar left_data x
-        | MAP f -> map_layer_data left_data f)
+        | MAP f -> map_layer_data left_data f
+        | IN_LIST xs -> in_list_layer_data left_data xs)
 
   let eval_layer_operation layer_operation =
     let result_layer =
@@ -373,10 +396,12 @@ module FloatOperationLayer = struct
     let g x = if f x then 1.0 else 0.0 in
     LayerOperation (lhs, MAP g)
 
-  let layer_values_in_list lhs list_of_values =
+  (* let layer_values_in_list lhs list_of_values =
     (* returns binary masked layer *)
     let f x = List.mem x list_of_values in
-    binary_filter lhs f
+    binary_filter lhs f *)
+  
+  let layer_values_in_list lhs list_of_values = LayerOperation(lhs, IN_LIST list_of_values)
 
   let layer_values_in_range lhs min max =
     (* returns binary masked layer *)

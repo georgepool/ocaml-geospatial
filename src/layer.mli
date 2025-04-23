@@ -63,6 +63,7 @@ module UInt8OperationLayer : sig
     | ADD_SCALAR of 'a
     | MUL_SCALAR of 'a
     | MAP of ('a -> 'a)
+    | IN_LIST of 'a list
 
   and ('a, 'b) t =
     | SingleLayer of ('a, 'b) UInt8Layer.t
@@ -112,6 +113,7 @@ module FloatOperationLayer : sig
     | ADD_SCALAR of 'a
     | MUL_SCALAR of 'a
     | MAP of ('a -> 'a)
+    | IN_LIST of 'a list
 
   and ('a, 'b) t =
     | SingleLayer of ('a, 'b) FloatLayer.t
