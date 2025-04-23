@@ -5,7 +5,7 @@ let () =
   let fs = Eio.Stdenv.fs env in 
   let jung_layer = FloatLayer.layer_from_file Eio.Path.(fs / "tests/files/jung_uncompressed.tif") in
   let elevation_layer = FloatLayer.layer_from_file Eio.Path.(fs / "tests/files/elevation-float_uncompressed.tif") in
-  let raster_layer = FloatLayer.layer_from_file Eio.Path.(fs / "tests/files/tile_01.tif") in
+  let raster_layer = FloatLayer.layer_from_file Eio.Path.(fs / "tests/files/9997_RESIDENT_uncompressed.tif") in
   let area_per_pixel_layer = FloatLayer.layer_from_file Eio.Path.(fs / "tests/files/fullarea_uncompressed.tif") in
   let intersection_area = FloatLayer.find_intersection [jung_layer; elevation_layer; raster_layer; area_per_pixel_layer] in 
   FloatLayer.update_layer_from_area jung_layer intersection_area;

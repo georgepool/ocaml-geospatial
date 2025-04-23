@@ -221,6 +221,7 @@ module BaseOperationLayer = struct
     | MUL_SCALAR of 'a
     | MAP of ('a -> 'a)
     | IN_LIST of 'a list
+    | IN_RANGE of 'a * 'a
 
   and ('a, 'b) t =
     | SingleLayer of ('a, 'b) BaseLayer.t
@@ -243,6 +244,11 @@ module BaseOperationLayer = struct
   let add_layer_data_scalar lhs x = Owl.Dense.Ndarray.Generic.add_scalar lhs x
   let mul_layer_data_scalar lhs x = Owl.Dense.Ndarray.Generic.mul_scalar lhs x
   let map_layer_data lhs f = Owl.Dense.Ndarray.Generic.map f lhs
+
+  let in_range_data lhs min_val max_val = 
+    let above_min = Owl.Dense.Ndarray.Generic.elt_greater_equal_scalar lhs min_val in 
+    let below_min = Owl.Dense.Ndarray.Generic.elt_less_equal_scalar lhs max_val in 
+    Owl.Dense.Ndarray.Generic.mul above_min below_min
 
   let rec dfs_layer layer_operation =
     match layer_operation with
@@ -308,7 +314,8 @@ module UInt8OperationLayer = struct
         | ADD_SCALAR x -> add_layer_data_scalar left_data x
         | MUL_SCALAR x -> mul_layer_data_scalar left_data x
         | MAP f -> map_layer_data left_data f
-        | IN_LIST xs -> in_list_layer_data left_data xs)
+        | IN_LIST xs -> in_list_layer_data left_data xs
+        | IN_RANGE (min_val, max_val) -> in_range_data left_data min_val max_val)
 
   let eval_layer_operation layer_operation =
     let result_layer =
@@ -334,11 +341,14 @@ module UInt8OperationLayer = struct
 
   let layer_values_in_list lhs list_of_values = LayerOperation(lhs, IN_LIST list_of_values)
 
-  let layer_values_in_range lhs min max =
+
+  (* let layer_values_in_range lhs min max =
     (* returns binary masked layer *)
     (* inclusive of min and max *)
     let f x = x >= min && x <= max in
-    binary_filter lhs f
+    binary_filter lhs f *)
+
+    let layer_values_in_range lhs min max = LayerOperation(lhs, IN_RANGE(min, max))
 
 end
 
@@ -377,7 +387,8 @@ module FloatOperationLayer = struct
         | ADD_SCALAR x -> add_layer_data_scalar left_data x
         | MUL_SCALAR x -> mul_layer_data_scalar left_data x
         | MAP f -> map_layer_data left_data f
-        | IN_LIST xs -> in_list_layer_data left_data xs)
+        | IN_LIST xs -> in_list_layer_data left_data xs
+        | IN_RANGE (min_val, max_val) -> in_range_data left_data min_val max_val)
 
   let eval_layer_operation layer_operation =
     let result_layer =
@@ -403,10 +414,12 @@ module FloatOperationLayer = struct
   
   let layer_values_in_list lhs list_of_values = LayerOperation(lhs, IN_LIST list_of_values)
 
-  let layer_values_in_range lhs min max =
+  (* let layer_values_in_range lhs min max =
     (* returns binary masked layer *)
     (* inclusive of min and max *)
     let f x = x >= min && x <= max in
-    binary_filter lhs f
+    binary_filter lhs f *)
+
+  let layer_values_in_range lhs min max = LayerOperation(lhs, IN_RANGE(min, max))
   
 end
