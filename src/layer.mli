@@ -17,7 +17,8 @@ module UInt8Layer : sig
   val pixel_scale : (int, int8_unsigned_elt) t -> Pixel_scale.t
   val pp_layer : (int, int8_unsigned_elt) t -> unit
   val read_data : (int, int8_unsigned_elt) t -> unit
-  val layer_from_file : Eio.Fs.dir_ty Eio.Path.t -> (int, int8_unsigned_elt) t
+  val layer_from_file : 
+  Eio.Fs.dir_ty Eio.Path.t -> (int, int8_unsigned_elt) t
 
   val set_window :
     (int, int8_unsigned_elt) t -> int -> int -> int -> int -> unit
@@ -63,6 +64,8 @@ module UInt8OperationLayer : sig
     | ADD_SCALAR of 'a
     | MUL_SCALAR of 'a
     | MAP of ('a -> 'a)
+    | IN_LIST of 'a list
+    | IN_RANGE of 'a * 'a
 
   and ('a, 'b) t =
     | SingleLayer of ('a, 'b) UInt8Layer.t
@@ -112,6 +115,8 @@ module FloatOperationLayer : sig
     | ADD_SCALAR of 'a
     | MUL_SCALAR of 'a
     | MAP of ('a -> 'a)
+    | IN_LIST of 'a list
+    | IN_RANGE of 'a * 'a
 
   and ('a, 'b) t =
     | SingleLayer of ('a, 'b) FloatLayer.t
